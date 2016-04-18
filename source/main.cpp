@@ -1,3 +1,4 @@
+#include <dirent.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -30,7 +31,7 @@ void openMenu(u8 m) {
     menu = m;
     consoleSelect(&top);
     consoleClear();
-    printf("\x1b[0;0H\x1b[47;30mNotifyMii v1.0                                    \x1b[0m");
+    printf("\x1b[0;0H\x1b[47;30mNotifyMii v1.0.1                                  \x1b[0m");
     if (menu==0) printf("\x1b[29;0H\x1b[47;30mD-PAD: Navigate / A: Select                       \x1b[0m");
     if (menu==2) printf("\x1b[29;0H\x1b[47;30mA: Read / Y: Dump / X: Delete / B: Back           \x1b[0m");
     consoleSelect(&bot);
@@ -48,9 +49,8 @@ int main(int argc, char **argv)
 	consoleSelect(&top);
     
     //create NotifyMii folder
-    FS_Archive sdmcArchive = (FS_Archive){ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
-    FS_Path path = fsMakePath(PATH_ASCII, "NotifyMii");
-    FSUSER_CreateDirectory(sdmcArchive, path, 0);
+    char folderPath[] = "/NotifyMii";
+    mkdir(folderPath, 0777);
     
     //create news list
     NewsList* news = createVoice(0);
@@ -121,7 +121,7 @@ int main(int argc, char **argv)
             u32 kDown = hidKeysDown();
             
             //print title and message
-            printf("\x1b[0;0H\x1b[47;30mNotifyMii v1.0                                    \x1b[0m");
+            printf("\x1b[0;0H\x1b[47;30mNotifyMii v1.0.1                                  \x1b[0m");
             printf("\x1b[28;0H\x1b[47;30mD-PAD: Move / A: Input / B: Back / L: Backspace / \x1b[29;0HSELECT: Shift / START: Confirm                    \x1b[0m");
             if (phase==0) printf("\x1b[1;0HTitle:\x1b[2;0H%s", title);
             if (phase==1) printf("\x1b[1;0HMessage:\x1b[2;0H%s", message);

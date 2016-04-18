@@ -143,7 +143,7 @@ void readNews(u32 id, NewsList* list) {
 	char message[0x1780 * 2];
 	utf2ascii(message, tmp);
 	printf("\x1b[1;0H%s", message);
-    printf("\x1b[0;0H\x1b[47;30mNotifyMii v1.0                                    \x1b[0m");
+    printf("\x1b[0;0H\x1b[47;30mNotifyMii v1.0.1                                  \x1b[0m");
     printf("\x1b[29;0H\x1b[47;30mA: Read / X: Delete / B: Back                     \x1b[0m");
     consoleSelect(&bot);
 }
