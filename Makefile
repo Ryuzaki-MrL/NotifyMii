@@ -35,7 +35,7 @@ INCLUDES	:=	include
 ROMFS		:=	romfs
 
 APP_TITLE	:=	NotifyMii
-APP_DESCRIPTION	:=	Homebrew Notification Manager
+APP_DESCRIPTION	:=	NotifyMii
 APP_AUTHOR	:=	Ryuzaki_MrL
 
 ICON		:=	assets/icon48.png
@@ -149,7 +149,7 @@ $(BUILD):
 #---------------------------------------------------------------------------------
 clean:
 	@echo clean ...
-	@rm -fr $(BUILD) $(TARGET).3dsx $(OUTPUT).smdh $(TARGET).elf
+	@rm -fr $(BUILD) $(TARGET).3dsx $(OUTPUT).smdh $(TARGET).elf $(TARGET).cia
 
 
 #---------------------------------------------------------------------------------
