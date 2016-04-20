@@ -6,19 +6,7 @@
 #include "notification.h"
 #include "utils.h"
 
-NewsList* createVoice(u32 id) {
-	NewsList* voice = (NewsList*)malloc(sizeof(NewsList));
-	NotificationHeader header;
-	NEWS_GetNotificationHeader(id, &header);
-	utf2ascii(voice->title, header.title);
-	voice->next = NULL;
-	voice->id = id;
-	voice->hasImage = header.enableJPEG;
-    voice->unread = header.unread;
-    voice->isSpotPass = header.isSpotPass;
-	return voice;
-}
-
+/*
 void addNews(const char *title_c, const char *text_c, u8 imgOption, NewsList* list) {
     u32 titleSize = strlen(title_c);
     u32 textSize = strlen(text_c);
@@ -46,114 +34,86 @@ void addNews(const char *title_c, const char *text_c, u8 imgOption, NewsList* li
         u32 id = selectNews(list);
 		NEWS_GetNotificationImage(id, image, &imgSize);
     }
-    /*
     if (imgOption==2) {
         image = NULL;
     }
-    */
     Result res = NEWS_AddNotification(title, titleSize, text, textSize, image, imgSize, true);
     consoleSelect(&top);
     if (res) printf("\x1b[1;0HFailed! Press any key to continue.");
     else {
         printf("\x1b[1;0HDone! Press any key to continue.");
-        /*NewsList* voice = createVoice(total);
-        list->next = voice;
-        list = list->next;
-        total++;
-        */
     }
     waitKey();
 }
+*/
 
-void printNews(NewsList* list) {
+void printNews(u32 selected, u32 scroll, bool info) {
+    NotificationHeader header;
+    if (info) {
+        consoleSelect(&top);
+        consoleClear();
+        NEWS_GetNotificationHeader(selected, &header);
+        printf("\x1b[1;0HProcess ID: %#0llx", header.processID);
+        u64 time = (header.time / 1000) % 86400;
+        u8 hours = time / 3600;
+        u8 minutes = (time % 3600) / 60;
+        u8 seconds = time % 60;
+        printf("\x1b[2;0HTime: 00:00:00\x1b[2;6H%2u:%2u:%2u", hours, minutes, seconds);
+        printf("\x1b[3;0HFlags:\x1b[4;0H");
+        if (header.unread) printf("\x1b[33m  Unread\n\x1b[0m");
+        if (header.isSpotPass) printf("\x1b[32m  SpotPass\n\x1b[0m");
+        if (header.enableJPEG) printf("\x1b[35m  Has image\n\x1b[0m");
+        if (header.isOptedOut) printf("\x1b[31m  Opted out\n\x1b[0m");
+        printf("\x1b[0;0H\x1b[47;30mNotifyMii v1.1                                    \x1b[0m");
+        printf("\x1b[28;0H\x1b[47;30mA: Read / Y: Dump / X: Delete / B: Back           \x1b[0m");
+        printf("\x1b[29;0H\x1b[47;30mSELECT: Dump all / START: Launch app              \x1b[0m");
+    }
     consoleSelect(&bot);
     consoleClear();
     printf("\x1b[0;0HNOTIFICATION LIST");
     printf("\x1b[%lu;0H>", 1 + selected);
+    
+    u32 total;
+    NEWS_GetTotalNotifications(&total);
+    
 	u32 i = 0;
-	while (i < scroll) {
-		list = list->next;
-		i++;
-	}
-	i = 0;
-	while (list != NULL) {
+	while (i < total) {
 		if (i > 28) break;
-        //if ( (i == 0) && (scroll>0) ) printf("\x1b[37m...");
-		if (list->unread) printf("\x1b[%lu;2H\x1b[33m%s [!]\x1b[0m", 1 + i, list->title);
-        else printf("\x1b[%lu;2H%s", 1 + i, list->title);
-		list = list->next;
+        NEWS_GetNotificationHeader(i + scroll, &header);
+        char title[32];
+        utf2ascii(title, header.title);
+		if (header.unread) printf("\x1b[%lu;2H\x1b[33m%s [!]\x1b[0m", 1 + i, title);
+        else printf("\x1b[%lu;2H%s", 1 + i, title);
 		i++;
 	}
 }
 
-u32 selectNews(NewsList* news) {
-    selected = 0;
-    scroll = 0;
-    printNews(news);
-    while ( aptMainLoop() )
-    {
-        //scan input
-        hidScanInput();
-        u32 kDown = hidKeysDown();
-        
-        //move cursor
-        if (kDown & KEY_DOWN) {
-            if (selected<14) selected++;
-            else if ( (selected + scroll) < (total - 15) ) scroll++;
-            else if (selected<28) selected++;
-            else { selected = 0; scroll = 0; }
-            printNews(news);
-        }
-        if (kDown & KEY_UP) {
-            if (selected>13) selected--;
-            else if (scroll>0) scroll--;
-            else if (selected>0) selected--;
-            else {
-                if (total>28) { selected = 28; scroll = total - 29; }
-                else if (total>0) selected = total - 1;
-            }
-            printNews(news);
-        }
-        
-        //get selected news
-        if (kDown & KEY_A) break;
-        
-        //flush and swap buffers
-        gfxFlushBuffers();
-        gfxSwapBuffers();
-        gspWaitForVBlank();
-    }
-    return selected + scroll;
-}
 
-void readNews(u32 id, NewsList* list) {
+void readNews(u32 id) {
     consoleSelect(&top);
     consoleClear();
     NotificationHeader header;
     NEWS_GetNotificationHeader(id, &header);
     header.unread=false;
     NEWS_SetNotificationHeader(id, (const NotificationHeader*)&header);
-    while (list != NULL) {
-        NEWS_GetNotificationHeader(list->id, &header);
-        list->unread = header.unread;
-		list = list->next;
-	}
 	u16 tmp[0x1780];
 	NEWS_GetNotificationMessage(id, tmp);
-	char message[0x1780 * 2];
+	char message[0x1780];
 	utf2ascii(message, tmp);
 	printf("\x1b[1;0H%s", message);
-    printf("\x1b[0;0H\x1b[47;30mNotifyMii v1.0.1                                  \x1b[0m");
-    printf("\x1b[29;0H\x1b[47;30mA: Read / X: Delete / B: Back                     \x1b[0m");
+    printf("\x1b[0;0H\x1b[47;30mNotifyMii v1.1                                    \x1b[0m");
+    printf("\x1b[28;0H\x1b[47;30mA: Read / Y: Dump / X: Delete / B: Back           \x1b[0m");
+    printf("\x1b[29;0H\x1b[47;30mSELECT: Dump all / START: Launch app              \x1b[0m");
     consoleSelect(&bot);
 }
 
-void dumpNews (u32 id, NewsList* news) {
-	u32 i = 0;
-	while (i < id) {
-		news = news->next;
-		i++;
-	}
+
+void dumpNews (u32 id) {
+    //generating header
+    NotificationHeader header;
+    NEWS_GetNotificationHeader(id, &header);
+    char title[32];
+    utf2ascii(title, header.title);
     
     //generating filenames
 	u64 time = (osGetTime() / 1000) % 86400;
@@ -162,12 +122,12 @@ void dumpNews (u32 id, NewsList* news) {
 	u8 seconds = time % 60;
 	char filename[64];
 	char filename2[64];
-	sprintf(filename, "/NotifyMii/%u%u%u_%s.txt", hours, minutes, seconds, news->title);
-	sprintf(filename2,"/NotifyMii/%u%u%u_%s.jpg", hours, minutes, seconds, news->title);
+	sprintf(filename, "/NotifyMii/%u%u%u_%s.txt", hours, minutes, seconds, title);
+	sprintf(filename2,"/NotifyMii/%u%u%u_%s.jpg", hours, minutes, seconds, title);
 	
 	//getting message
 	u16 tmp[0x1780];
-	NEWS_GetNotificationMessage(news->id, tmp);
+	NEWS_GetNotificationMessage(id, tmp);
 	char message[0x1780 * 2];
 	utf2ascii(message, tmp);
 	
@@ -182,11 +142,11 @@ void dumpNews (u32 id, NewsList* news) {
 	svcCloseHandle(fileHandle);
 	
 	//writing image file if exists
-	if (news->hasImage) {
+	if (header.enableJPEG) {
 		u32 size;
 		Handle fileHandle2;
 		u8* buffer = (u8*)malloc(0x20000);
-		Result ret = NEWS_GetNotificationImage(news->id, buffer, &size);
+		Result ret = NEWS_GetNotificationImage(id, buffer, &size);
         if (!ret) {
             FS_Path filePath2=fsMakePath(PATH_ASCII, filename2);
             FSUSER_OpenFileDirectly( &fileHandle2, sdmcArchive, filePath2, FS_OPEN_WRITE | FS_OPEN_CREATE, 0x00000000);
@@ -198,40 +158,19 @@ void dumpNews (u32 id, NewsList* news) {
 	}
 }
 
-NewsList* deleteNews(u32 id, NewsList* news) {
-	NewsList* ret = news;
-	NewsList* tmp = news;
-	if (id > 0) {
-		u32 i = 1;
-		while (i < id) {
-			tmp = tmp->next;
-			i++;
-		}
-		NewsList* tmp2 = tmp;
-		tmp = tmp->next;
-		tmp2->next = tmp->next;
-	}
-    else ret = ret->next;
-	NotificationHeader header = { 0 };
-	NEWS_SetNotificationHeader(tmp->id, (const NotificationHeader*)&header);
-    total--;
-    if (scroll>0) scroll--;
-    else if (selected >= total) {
-        if (total>0) selected=total-1;
-    }
-	free(tmp);
-	return ret;
-}
 
-void clearNews(NewsList* list) {
-    int errors = 0;
-	NotificationHeader header = { 0 };
-	while (list != NULL) {
-		Result ret = NEWS_SetNotificationHeader(list->id, (const NotificationHeader*)&header);
-		if (ret) errors++;
-		list = list->next;
-	}
-	printf("%li notifications deleted!\nPress any key to continue.", total - errors);
-    total -= (total - errors);
-    waitKey();
+void deleteNews(u32 id) {
+    /*
+    u32 total;
+    NEWS_GetTotalNotifications(&total);
+    u32 i = id;
+    while (i < (total-1) ) {
+        NotificationHeader header;
+        NEWS_GetNotificationHeader(i + 1, &header);
+        NEWS_SetNotificationHeader(i, (const NotificationHeader*)&header);
+        i++;
+    }
+    */
+    NotificationHeader header = { 0 };
+    NEWS_SetNotificationHeader(id, (const NotificationHeader*)&header);
 }
