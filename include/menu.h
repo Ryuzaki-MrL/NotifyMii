@@ -26,10 +26,17 @@ enum {
     MENU_ADD_NEWS
 };
 
-void printFiles(u32 selected, u32 scroll, u32 count, std::vector<std::string> *files, std::string curdir);
-void printTitles(u32 selected, u32 scroll, u32 count, std::vector<u64> *titles, u8 media);
-std::vector<std::string> getFileList(std::string directory, std::string extension);
+typedef struct {
+    std::string name;
+    bool isDir;
+} entry;
+
+void drawImage(u8 *image, u32 imgSize);
 bool isDirectory(std::string path);
+void sortFileList(std::vector<entry> *filelist, std::string curdir);
+std::vector<entry> getFileList(std::string directory, std::string extension);
+void printFiles(u32 selected, u32 scroll, u32 count, std::vector<entry> *files, std::string curdir);
+void printTitles(u32 selected, u32 scroll, u32 count, std::vector<u64> *titles, FS_MediaType media);
 
 void menuMain(u8 *menu);
 void menuAddTitle(u8 *menu, char *title);

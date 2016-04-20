@@ -10,7 +10,7 @@ Features:
 - Launch the app from which the notification was received.
 
 Issues:
-- Deleting a notification that isn't the last one on the list will mess up some other notifications.
+- Deleting a notification that isn't the last one on the list will mess up with other notifications.
 
 TODO:
 - Improve UI, maybe even make a GUI.

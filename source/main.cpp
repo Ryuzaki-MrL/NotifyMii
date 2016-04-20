@@ -47,7 +47,7 @@ int main(int argc, char **argv)
         consoleClear();
         
         //print app info
-        printf("\x1b[0;0H\x1b[47;30mNotifyMii v1.1                                    \x1b[0m");
+        printf("\x1b[0;0H\x1b[47;30mNotifyMii v1.2                                    \x1b[0m");
         
         //menu loop
         switch (menu) {
@@ -77,8 +77,11 @@ int main(int argc, char **argv)
     }
     
     //clearup
-    consoleClear();
     free(image);
+    consoleSelect(&top);
+    consoleClear();
+    consoleSelect(&bot);
+    consoleClear();
     
     //finalization
     gfxExit();
