@@ -32,7 +32,7 @@ void drawImage(u8 *imgBuffer, u32 imgSize) {
     sf2d_fini();
     gfxInitDefault();
     consoleInit(GFX_TOP, &top);
-	consoleInit(GFX_BOTTOM, &bot);
+    consoleInit(GFX_BOTTOM, &bot);
 }
 
 
@@ -65,12 +65,11 @@ std::vector<entry> getFileList(std::string directory, std::string extension) {
     dirent* ent = NULL;
     do {
         ent = readdir(dir);
-        if(ent != NULL) {
+        if (ent != NULL) {
             std::string file(ent->d_name);
             bool isDir = isDirectory(directory + file + "/");
             std::string::size_type dotPos = file.rfind('.');
             if( (extension == file.substr(dotPos+1)) || ( isDir ) ) result.push_back({file, isDir});
-            //if( (extension == file.substr(dotPos+1)) || (dotPos == std::string::npos) || ( isDir ) ) result.push_back({file, isDir});
         }
     } while(ent != NULL);
     

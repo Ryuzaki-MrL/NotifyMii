@@ -20,9 +20,9 @@ int main(int argc, char **argv)
     fsInit();
     amInit();
     gfxInitDefault();
-	consoleInit(GFX_TOP, &top);
-	consoleInit(GFX_BOTTOM, &bot);
-	consoleSelect(&top);
+    consoleInit(GFX_TOP, &top);
+    consoleInit(GFX_BOTTOM, &bot);
+    consoleSelect(&top);
     
     //create NotifyMii folder
     char folderPath[] = "/NotifyMii";

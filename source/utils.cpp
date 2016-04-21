@@ -5,16 +5,16 @@
 
 //Thanks Rinnegatamante
 void ascii2utf(u16* dst, char* src) {
-	if (!src || !dst) return;
-	while(*src) *(dst++)=(*src++);
-	*dst=0x00;
+    if (!src || !dst) return;
+    while(*src) *(dst++)=(*src++);
+    *dst=0x00;
 }
 
 //Thanks Rinnegatamante
 void utf2ascii(char* dst, u16* src) {
-	if (!src || !dst) return;
-	while(*src) *(dst++)=(*(src++))&0xFF;
-	*dst=0x00;
+    if (!src || !dst) return;
+    while(*src) *(dst++)=(*(src++))&0xFF;
+    *dst=0x00;
 }
 
 void waitKey() {
