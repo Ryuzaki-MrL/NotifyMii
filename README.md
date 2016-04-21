@@ -18,6 +18,7 @@ TODO:
 - Touch keyboard.
 
 Credits:
+- Rinnegatamante, as some of the code is from his homebrew: Purgification.
 - Kerouz, for the app's banner and icon.
 - Smealum, for ctrulib.
 - Steveice10, for bannertool.
