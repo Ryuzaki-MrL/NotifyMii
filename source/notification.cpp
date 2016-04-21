@@ -68,7 +68,7 @@ void readNews(u32 id) {
     consoleSelect(&bot);
 }
 
-
+//Thanks Rinnegatamante
 void dumpNews (u32 id) {
     //generating header
     NotificationHeader header;
@@ -119,7 +119,7 @@ void dumpNews (u32 id) {
 	}
 }
 
-
+//Thanks Rinnegatamante
 void deleteNews(u32 id) {
     /*
     u32 total;
