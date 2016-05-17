@@ -1,14 +1,20 @@
 #ifndef MENU_H
 #define MENU_H
 
-#include <vector>
-#include <string>
+enum {
+    MODE_SELECTION,
+    MODE_NEWS_LIST,
+    MODE_FILE_LIST,
+    MODE_TITLE_LIST,
+    MODE_KEYBOARD_LEGACY,
+    MODE_KEYBOARD_TOUCH
+}
 
 enum {
     MENU_MAIN,
     MENU_ADD_TITLE,
-    MENU_LIST,
-    MENU_CLEAR,
+    MENU_LIST_NEWS,
+    MENU_CLEAR_NEWS,
     MENU_EXIT,
     MENU_ADD_MESSAGE_SELECT,
     MENU_ADD_MESSAGE_KEYBOARD,
@@ -25,18 +31,6 @@ enum {
     MENU_ADD_PROCESS_NEWS,
     MENU_ADD_NEWS
 };
-
-typedef struct {
-    std::string name;
-    bool isDir;
-} entry;
-
-void drawImage(u8 *image, u32 imgSize);
-bool isDirectory(std::string path);
-void sortFileList(std::vector<entry> *filelist, std::string curdir);
-std::vector<entry> getFileList(std::string directory, std::string extension);
-void printFiles(u32 selected, u32 scroll, u32 count, std::vector<entry> *files, std::string curdir);
-void printTitles(u32 selected, u32 scroll, u32 count, std::vector<u64> *titles, FS_MediaType media);
 
 void menuMain(u8 *menu);
 void menuAddTitle(u8 *menu, char *title);

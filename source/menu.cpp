@@ -6,144 +6,34 @@
 #include <vector>
 #include <algorithm>
 #include <3ds.h>
-#include <sf2d.h>
-#include <sfil.h>
 
 #include "keyboard.h"
 #include "menu.h"
 #include "notification.h"
+#include "ui.h"
 #include "utils.h"
-
-void drawImage(u8 *imgBuffer, u32 imgSize) {
-    gfxExit();
-    sf2d_init();
-    sf2d_set_3D(0);
-    sf2d_texture *image = sfil_load_JPEG_buffer(imgBuffer, imgSize, SF2D_PLACE_RAM);
-    while ( aptMainLoop() ) {
-        hidScanInput();
-        u32 kDown = hidKeysDown();
-        if (kDown) break;
-        sf2d_start_frame(GFX_TOP, GFX_LEFT);
-        sf2d_draw_texture(image, 0, 0);
-        sf2d_end_frame();
-        sf2d_swapbuffers();
-    }
-    sf2d_free_texture(image);
-    sf2d_fini();
-    gfxInitDefault();
-    consoleInit(GFX_TOP, &top);
-    consoleInit(GFX_BOTTOM, &bot);
-}
-
-
-bool isDirectory(std::string path) {
-    bool result = false;
-    DIR *dir = opendir(path.c_str());
-    if (dir != NULL) result = true;
-    closedir(dir);
-    return result;
-}
-
-
-void sortFileList(std::vector<entry> *filelist) {
-    struct alphabetically {
-        inline bool operator() (entry a, entry b) {
-            if(a.isDir == b.isDir)
-                return strcasecmp(a.name.c_str(), b.name.c_str()) < 0;
-            else return a.isDir;
-        }
-    } sort_a;
-    std::sort((*filelist).begin(), (*filelist).end(), sort_a);
-}
-
-
-std::vector<entry> getFileList(std::string directory, std::string extension) {
-    std::vector<entry> result;
-    DIR* dir = opendir(directory.c_str());
-    if(dir == NULL) return result;
-    
-    dirent* ent = NULL;
-    do {
-        ent = readdir(dir);
-        if (ent != NULL) {
-            std::string file(ent->d_name);
-            bool isDir = isDirectory(directory + file + "/");
-            std::string::size_type dotPos = file.rfind('.');
-            if( (extension == file.substr(dotPos+1)) || ( isDir ) ) result.push_back({file, isDir});
-        }
-    } while(ent != NULL);
-    
-    closedir(dir);
-    sortFileList(&result);
-    return result;
-}
-
-
-void printFiles(u32 selected, u32 scroll, u32 count, std::vector<entry> *files, std::string curdir) {
-    consoleSelect(&top);
-    consoleClear();
-    printf("\x1b[0;0H\x1b[47;30mNotifyMii v1.2                                    \x1b[0m");
-    printf("\x1b[29;0H\x1b[47;30mD-PAD: Navigate / A: Select / Y: Preview / B: Back\x1b[0m");
-    consoleSelect(&bot);
-    consoleClear();
-    bool isRoot = (curdir=="/");
-    printf("\x1b[0;0H%.40s", curdir.c_str());
-    printf("\x1b[%lu;0H>", 1 + selected);
-    u32 i = 0;
-    while (i < count) {
-        if (i > 27) break;
-        if ( (*files)[i+scroll].isDir ) printf("\x1b[%lu;2H\x1b[33m%.38s\x1b[0m", 2 + i, (*files)[i+scroll].name.c_str());
-        else printf("\x1b[%lu;2H%.38s", 2 + i, (*files)[i+scroll].name.c_str());
-        i++;
-    }
-    if (isRoot) printf("\x1b[1;2H\x1b[35m[root]\x1b[0m");
-    else printf("\x1b[1;2H\x1b[37m..\x1b[0m");
-}
-
-
-void printTitles(u32 selected, u32 scroll, u32 count, std::vector<u64> *titles, FS_MediaType media) {
-    consoleSelect(&bot);
-    consoleClear();
-    if (media==MEDIATYPE_SD) printf("\x1b[0;0H/SD");
-    else printf("\x1b[0;0H/NAND");
-    printf("\x1b[%lu;0H>", 1 + selected);
-    u32 i = 0;
-    while (i < count) {
-        if (i > 28) break;
-        printf("\x1b[%lu;2H%#llx", 1 + i, (*titles)[i+scroll]);
-        i++;
-    }
-}
-
 
 void menuMain(u8 *menu) {
     u8 selected = 0;
-    
     u32 total;
     NEWS_GetTotalNotifications(&total);
     
-    consoleSelect(&top);
-    printf("\x1b[29;0H\x1b[47;30mD-PAD: Navigate / A: Select                       \x1b[0m");
-    
+    printInfo(0);
     consoleSelect(&bot);
     printf("\x1b[0;1HMAIN MENU");
     printf("\x1b[1;2HAdd Notification");
     printf("\x1b[2;2HView Notifications");
     printf("\x1b[3;2HClear Notifications");
     printf("\x1b[4;2HExit");
-    
     printf("\x1b[29;0HFound %lu notifications.", total);
     
     while ( aptMainLoop() )
     {
-        //scan input
         hidScanInput();
         u32 kDown = hidKeysDown();
         
-        //print cursor
         printf("\x1b[%u;0H \n>\n ", selected);
         
-        //move cursor
         if (kDown & KEY_DOWN) {
             if (selected<3) selected++;
         }
@@ -151,22 +41,12 @@ void menuMain(u8 *menu) {
             if (selected>0) selected--;
         }
         
-        //open selected menu
         if (kDown & KEY_A) {
             *menu = 1 + selected;
             break;
         }
         
-        //ends loop
-        if (kDown & KEY_START) {
-            *menu = MENU_EXIT;
-            break;
-        }
-        
-        //flush and swap buffers
-        gfxFlushBuffers();
-        gfxSwapBuffers();
-        gspWaitForVBlank();
+        gfxEndFrame();
     }
 }
 
@@ -244,10 +124,7 @@ void menuAddTitle(u8 *menu, char *title) {
             break;
         }
         
-        //flush and swap buffers
-        gfxFlushBuffers();
-        gfxSwapBuffers();
-        gspWaitForVBlank();
+        gfxEndFrame();
     }
 }
 
@@ -404,10 +281,7 @@ void menuList(u8 *menu) {
             break;
         }
         
-        //flush and swap buffers
-        gfxFlushBuffers();
-        gfxSwapBuffers();
-        gspWaitForVBlank();
+        gfxEndFrame();
     }
 }
 
@@ -471,10 +345,7 @@ void menuAddMessageSelect(u8 *menu) {
             break;
         }
         
-        //flush and swap buffers
-        gfxFlushBuffers();
-        gfxSwapBuffers();
-        gspWaitForVBlank();
+        gfxEndFrame();
     }
 }
 
@@ -557,10 +428,7 @@ void menuAddMessageKeyboard(u8 *menu, char *message) {
             break;
         }
         
-        //flush and swap buffers
-        gfxFlushBuffers();
-        gfxSwapBuffers();
-        gspWaitForVBlank();
+        gfxEndFrame();
     }
 }
 
@@ -717,10 +585,7 @@ void menuAddMessageFile(u8 *menu, char *message) {
             }
         }
         
-        //flush and swap buffers
-        gfxFlushBuffers();
-        gfxSwapBuffers();
-        gspWaitForVBlank();
+        gfxEndFrame();
     }
 }
 
@@ -797,10 +662,7 @@ void menuAddMessageNews(u8 *menu, char *message) {
             break;
         }
         
-        //flush and swap buffers
-        gfxFlushBuffers();
-        gfxSwapBuffers();
-        gspWaitForVBlank();
+        gfxEndFrame();
     }
 }
 
@@ -847,10 +709,7 @@ void menuAddImageSelect(u8 *menu) {
             break;
         }
         
-        //flush and swap buffers
-        gfxFlushBuffers();
-        gfxSwapBuffers();
-        gspWaitForVBlank();
+        gfxEndFrame();
     }
 }
 
@@ -1041,10 +900,7 @@ void menuAddImageFile(u8 *menu, u8 *image, u32 *imgSize) {
             }
         }
         
-        //flush and swap buffers
-        gfxFlushBuffers();
-        gfxSwapBuffers();
-        gspWaitForVBlank();
+        gfxEndFrame();
     }
 }
 
@@ -1142,10 +998,7 @@ void menuAddImageNews(u8 *menu, u8 *image, u32 *imgSize) {
             break;
         }
         
-        //flush and swap buffers
-        gfxFlushBuffers();
-        gfxSwapBuffers();
-        gspWaitForVBlank();
+        gfxEndFrame();
     }
 }
 
@@ -1201,10 +1054,7 @@ void menuAddProcessSelect(u8 *menu, u64 *processID) {
             break;
         }
         
-        //flush and swap buffers
-        gfxFlushBuffers();
-        gfxSwapBuffers();
-        gspWaitForVBlank();
+        gfxEndFrame();
     }
 }
 
@@ -1307,10 +1157,7 @@ void menuAddProcessBrowse(u8 *menu, u64 *processID) {
             break;
         }
         
-        //flush and swap buffers
-        gfxFlushBuffers();
-        gfxSwapBuffers();
-        gspWaitForVBlank();
+        gfxEndFrame();
     }
 }
 
@@ -1379,10 +1226,7 @@ void menuAddProcessNews(u8 *menu, u64 *processID) {
             break;
         }
         
-        //flush and swap buffers
-        gfxFlushBuffers();
-        gfxSwapBuffers();
-        gspWaitForVBlank();
+        gfxEndFrame();
     }
 }
 

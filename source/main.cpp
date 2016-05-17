@@ -4,10 +4,7 @@
 #include <string.h>
 #include <3ds.h>
 
-#include "keyboard.h"
 #include "menu.h"
-#include "notification.h"
-#include "utils.h"
 
 PrintConsole top;
 PrintConsole bot;
@@ -46,15 +43,12 @@ int main(int argc, char **argv)
         consoleSelect(&top);
         consoleClear();
         
-        //print app info
-        printf("\x1b[0;0H\x1b[47;30mNotifyMii v1.2                                    \x1b[0m");
-        
         //menu loop
         switch (menu) {
             case MENU_MAIN: menuMain(&menu); break;
             case MENU_ADD_TITLE: menuAddTitle(&menu, title); break;
-            case MENU_LIST: menuList(&menu); break;
-            case MENU_CLEAR: menuClear(&menu); break;
+            case MENU_LIST_NEWS: menuList(&menu); break;
+            case MENU_CLEAR_NEWS: menuClear(&menu); break;
             case MENU_ADD_MESSAGE_SELECT: menuAddMessageSelect(&menu); break;
             case MENU_ADD_MESSAGE_KEYBOARD: menuAddMessageKeyboard(&menu, message); break;
             case MENU_ADD_MESSAGE_FILE: menuAddMessageFile(&menu, message); break;
