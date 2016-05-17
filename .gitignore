@@ -1,3 +1,10 @@
+# Build files
+*.3dsx
+*.elf
+*.smdh
+romfs
+build/
+
 # Windows image file caches
 Thumbs.db
 ehthumbs.db

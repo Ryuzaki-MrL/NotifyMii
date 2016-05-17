@@ -729,7 +729,7 @@ void menuAddImageDefault(u8 *menu, u8 *image, u32 *imgSize) {
     else {
         u64 size;
         FSFILE_GetSize(imgHandle, &size);
-        if (size > 0x20000) {
+        if (size > 0xC800) {
             consoleSelect(&top);
             printf("\x1b[1;0HImage file too large.\nPress any key to continue.");
             waitKey();
@@ -812,7 +812,7 @@ void menuAddImageFile(u8 *menu, u8 *image, u32 *imgSize) {
                     else {
                         u64 size;
                         FSFILE_GetSize(fileHandle, &size);
-                        if (size > 0x20000) {
+                        if (size > 0xC800) {
                             consoleSelect(&top);
                             printf("\x1b[1;0HImage file too large.\nPress any key to continue.");
                             waitKey();
@@ -856,13 +856,13 @@ void menuAddImageFile(u8 *menu, u8 *image, u32 *imgSize) {
                     else {
                         u64 size;
                         FSFILE_GetSize(fileHandle, &size);
-                        if ( (size > 0x20000) ) {
+                        if ( (size > 0xC800) ) {
                             consoleSelect(&top);
                             printf("\x1b[1;0HImage file too large.\nPress any key to continue.");
                             waitKey();
                         }
                         else if (size > 0) {
-                            u8* buffer = (u8*)malloc(0x20000);
+                            u8* buffer = (u8*)malloc(0xC800);
                             u32 bufferSize;
                             FSFILE_Read(fileHandle, &bufferSize, 0, buffer, size);
                             FSFILE_Close(fileHandle);
@@ -981,7 +981,7 @@ void menuAddImageNews(u8 *menu, u8 *image, u32 *imgSize) {
             NotificationHeader header;
             NEWS_GetNotificationHeader(selected + scroll, &header);
             if (header.enableJPEG) {
-                u8* buffer = (u8*)malloc(0x20000);
+                u8* buffer = (u8*)malloc(0xC800);
                 NEWS_GetNotificationImage(selected + scroll, buffer, &size);
                 drawImage(buffer, size);
                 free(buffer);
@@ -1004,8 +1004,8 @@ void menuAddImageNews(u8 *menu, u8 *image, u32 *imgSize) {
 
 
 void menuAddImageEmpty(u8 *menu, u8 *image, u32 *imgSize, bool *hasImage) {
-    memset(image, 0, 0x20000);
-    *imgSize = 0x20000;
+    memset(image, 0, 0xC800);
+    *imgSize = 0xC800;
     *hasImage = false;
     *menu = MENU_ADD_PROCESS_SELECT;
 }

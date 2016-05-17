@@ -99,7 +99,7 @@ void dumpNews (u32 id) {
     if (header.enableJPEG) {
         u32 size;
         Handle fileHandle2;
-        u8* buffer = (u8*)malloc(0x20000);
+        u8* buffer = (u8*)malloc(0xC800);
         Result ret = NEWS_GetNotificationImage(id, buffer, &size);
         if (!ret) {
             FS_Path filePath2=fsMakePath(PATH_ASCII, filename2);
