@@ -106,7 +106,7 @@ void dumpNews (u32 id) {
     if (header.enableJPEG) {
         u32 size;
         Handle fileHandle2;
-        u8* buffer = (u8*)malloc(0x20000);
+        u8* buffer = (u8*)malloc(0xC800);
         Result ret = NEWS_GetNotificationImage(id, buffer, &size);
         if (!ret) {
             FS_Path filePath2=fsMakePath(PATH_ASCII, filename2);
@@ -121,17 +121,6 @@ void dumpNews (u32 id) {
 
 //Thanks Rinnegatamante
 void deleteNews(u32 id) {
-    /*
-    u32 total;
-    NEWS_GetTotalNotifications(&total);
-    u32 i = id;
-    while (i < (total-1) ) {
-        NotificationHeader header;
-        NEWS_GetNotificationHeader(i + 1, &header);
-        NEWS_SetNotificationHeader(i, (const NotificationHeader*)&header);
-        i++;
-    }
-    */
     NotificationHeader header = { 0 };
     NEWS_SetNotificationHeader(id, (const NotificationHeader*)&header);
 }
