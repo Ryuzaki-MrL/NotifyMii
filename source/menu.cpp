@@ -1,162 +1,46 @@
-#include <dirent.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stack>
 #include <vector>
-#include <algorithm>
 #include <3ds.h>
 
-#include "keyboard.h"
-#include "menu.h"
-#include "notification.h"
-#include "ui.h"
 #include "utils.h"
+#include "notification.h"
+#include "menu.h"
+#include "ui.h"
+#include "keyboard.h"
 
-void menuMain(u8 *menu) {
+u8 selectionMenu(char *text, u8 entries) {
     u8 selected = 0;
-    u32 total;
-    NEWS_GetTotalNotifications(&total);
-    
-    printInfo(0);
+    printInfo(MODE_SELECTION);
     consoleSelect(&bot);
-    printf("\x1b[0;1HMAIN MENU");
-    printf("\x1b[1;2HAdd Notification");
-    printf("\x1b[2;2HView Notifications");
-    printf("\x1b[3;2HClear Notifications");
-    printf("\x1b[4;2HExit");
-    printf("\x1b[29;0HFound %lu notifications.", total);
-    
-    while ( aptMainLoop() )
-    {
-        hidScanInput();
-        u32 kDown = hidKeysDown();
-        
+    consoleClear();
+    printf("\x1b[0;1H%s", text);
+    while ( aptMainLoop() ) {
         printf("\x1b[%u;0H \n>\n ", selected);
-        
-        if (kDown & KEY_DOWN) {
-            if (selected<3) selected++;
-        }
-        if (kDown & KEY_UP) {
-            if (selected>0) selected--;
-        }
-        
-        if (kDown & KEY_A) {
-            *menu = 1 + selected;
-            break;
-        }
-        
-        gfxEndFrame();
-    }
-}
-
-
-void menuAddTitle(u8 *menu, char *title) {
-    char buffer[32];
-    memcpy(buffer, title, 32);
-    u32 offset = strlen(buffer);
-    bool shift = false;
-    u8 selected = 0;
-    
-    consoleSelect(&top);
-    printf("\x1b[28;0H\x1b[47;30mD-PAD: Move / A: Input / B: Back / L: Backspace / \x1b[29;0HSELECT: Shift / START: Confirm                    \x1b[0m");
-    printf("\x1b[1;0HNotification Title:");
-    
-    printKeyboard(selected, shift);
-    printf("\x1b[2;0H%s ", buffer);
-    
-    while ( aptMainLoop() )
-    {
-        //scan input
         hidScanInput();
         u32 kDown = hidKeysDown();
-        
-        //shift keyboard
-        if (kDown & KEY_SELECT) {
-            shift=(!shift);
-            printKeyboard(selected, shift);
-        }
-        
-        //move cursor
-        if (kDown & KEY_LEFT) {
-            if ( (selected % 12) > 0 ) selected--;
-            printKeyboard(selected, shift);
-        }
-        if (kDown & KEY_RIGHT) {
-            if ( (selected % 12) < 11 ) selected++;
-            printKeyboard(selected, shift);
-        }
-        if (kDown & KEY_UP) {
-            if (selected > 11) selected-=12;
-            printKeyboard(selected, shift);
-        }
-        if (kDown & KEY_DOWN) {
-            if (selected < 36) selected+=12;
-            printKeyboard(selected, shift);
-        }
-        
-        //add char
-        if (kDown & KEY_A) {
-            if (offset < 31) {
-                buffer[offset] = getKeyboardChar(selected, shift);
-                offset++;
-                printf("\x1b[2;0H%s ", buffer);
-            }
-        }
-        
-        //delete char
-        if (kDown & KEY_L) {
-            if (offset > 0) offset--;
-            buffer[offset] = '\0';
-            printf("\x1b[2;0H%s ", buffer);
-        }
-        
-        //confirm and continue
-        if (kDown & KEY_START) {
-            memcpy(title, buffer, 32);
-            *menu = MENU_ADD_MESSAGE_SELECT;
-            break;
-        }
-        
-        //return to main menu
-        if (kDown & KEY_B) {
-            *menu = MENU_MAIN;
-            break;
-        }
-        
+        if ( (kDown & KEY_DOWN) && (selected < entries-1) ) selected++;
+        if ( (kDown & KEY_UP) && (selected > 0) ) selected--;
+        if (kDown & KEY_A) break;
+        if (kDown & KEY_B) return 0xFF;
         gfxEndFrame();
     }
+    return selected;
 }
 
-
-void menuList(u8 *menu) {
+u8 getNotificationID() { // TODO: preview support
     u32 selected = 0;
     u32 scroll = 0;
-    
     u32 total;
     NEWS_GetTotalNotifications(&total);
-    
-    consoleSelect(&top);
-    printf("\x1b[28;0H\x1b[47;30mA: Read / Y: Dump / X: Delete / R: Image / B: Back\x1b[0m");
-    printf("\x1b[29;0H\x1b[47;30mSELECT: Dump all / START: Launch app              \x1b[0m");
-    
+    printInfo(MODE_SELECTION);
     printNews(selected, scroll, true);
-    
-    while ( aptMainLoop() )
-    {
-        //break if there are no notifications
-        if (total==0) {
-            printf("\x1b[0;0HYou don't have any notifications!\nPress any key to continue.");
-            waitKey();
-            *menu = MENU_MAIN;
-            break;
-        }
-        
-        //scan input
+    while (aptMainLoop()) {
+        if (total==0) return 0;
         hidScanInput();
         u32 kDown = hidKeysDown();
-        
-        //move cursor
         if (kDown & KEY_DOWN) {
             if (total < 29) {
                 if (selected < ( total - 1) ) selected++;
@@ -180,48 +64,314 @@ void menuList(u8 *menu) {
             }
             printNews(selected, scroll, true);
         }
-        
-        //read news
-        if (kDown & KEY_A) {
-            readNews(selected + scroll);
-            printNews(selected, scroll, false);
-        }
-        
-        //view image
-        if (kDown & KEY_R) {
+        if (kDown & KEY_A) break;
+        if (kDown & KEY_B) return 0xFF;
+        if (kDown & KEY_Y) {
             u32 size;
             NotificationHeader header;
             NEWS_GetNotificationHeader(selected + scroll, &header);
             if (header.enableJPEG) {
-                u8* buffer = (u8*)malloc(0x20000);
+                u8* buffer = (u8*)malloc(0x10000);
                 NEWS_GetNotificationImage(selected + scroll, buffer, &size);
                 drawImage(buffer, size);
                 free(buffer);
                 printNews(selected, scroll, true);
             }
         }
-        
-        //dump news
+        gfxEndFrame();
+    }
+    return selected + scroll;
+}
+
+u64 getTitleID() {
+    u32 selected = 0;
+    u32 scroll = 0;
+    u32 count;
+    FS_MediaType media;
+    std::vector<title_entry> titlelist;
+    printInfo(MODE_SELECTION);
+    bool getmedia = true;
+    while ( aptMainLoop() )
+    {
+        if (getmedia) {
+            char text[] = "SELECT SOURCE:\n  NAND\n  SD";
+            media = (FS_MediaType)selectionMenu(text, 2);
+            if (media==0xFF) return 0;
+            AM_GetTitleCount(media, &count);
+            if (count==0) return 0;
+            u64 *ids = new u64[count];
+            AM_GetTitleList(&count, media, count, ids);
+            titlelist.clear();
+            u32 i = 0;
+            while ( (i < count) && aptMainLoop() ) {
+                Handle smdhHandle;
+                char shortDesc[0x40];
+                u32 archivePathData[] = {(u32)(ids[i] & 0xFFFFFFFF), (u32)(ids[i] >> 32), media, 0x00000000};
+                const u32 filePathData[] = {0x00000000, 0x00000000, 0x00000002, 0x6E6F6369, 0x00000000};
+                Result ret = FSUSER_OpenFileDirectly(&smdhHandle, ARCHIVE_SAVEDATA_AND_CONTENT, (FS_Path){PATH_BINARY, 0x10, (u8*)archivePathData}, (FS_Path){PATH_BINARY, 0x14, (u8*)filePathData}, FS_OPEN_READ, 0);
+                if (!ret) {
+                    SMDH smdh;
+                    u32 bytesRead;
+                    FSFILE_Read(smdhHandle, &bytesRead, 0x0, &smdh, sizeof(SMDH));
+                    FSFILE_Close(smdhHandle);
+                    u8 lang = CFG_LANGUAGE_EN;
+                    CFGU_GetSystemLanguage(&lang);
+                    utf2ascii(shortDesc, smdh.titles[lang].shortDescription);
+                }
+                else memset(shortDesc, 0, 0x40); // Temporarly test
+                titlelist.push_back({ids[i], std::string(shortDesc)});
+                i++;
+                printf("\x1b[27;0HLoaded %lu titles", i);
+                gfxEndFrame();
+            }
+            delete[] ids;
+            selected = 0;
+            scroll = 0;
+            printTitles(selected, scroll, count, &titlelist, media);
+            getmedia = false;
+        }
+        hidScanInput();
+        u32 kDown = hidKeysDown();
+        if (kDown & KEY_DOWN) {
+            if (count < 29) {
+            if (selected < ( count - 1) ) selected++;
+            else selected=0;
+            }
+            else if (count > 0) {
+                if (selected<14) selected++;
+                else if ( (selected + scroll) < (count - 15) ) scroll++;
+                else if (selected<28) selected++;
+                else { selected = 0; scroll = 0; }
+            }
+            printTitles(selected, scroll, count, &titlelist, media);
+        }
+        if (kDown & KEY_UP) {
+            if (selected>13) selected--;
+            else if (scroll>0) scroll--;
+            else if (selected>0) selected--;
+            else {
+                if (count>28) { selected = 28; scroll = count - 29; }
+                else if (count>0) selected = count - 1;
+            }
+            printTitles(selected, scroll, count, &titlelist, media);
+        }
+        if (kDown & KEY_A) break;
+        if (kDown & KEY_B) getmedia = true;
+        gfxEndFrame();
+    }
+    return titlelist[selected + scroll].id;
+}
+
+std::string getFileName(std::string filter) { // TODO: fix text preview
+    u32 selected = 0;
+    u32 scroll = 0;
+    std::string curdir = "/";
+    std::stack<std::string> innerpath;
+    std::vector<entry> filelist = getFileList(curdir, filter);
+    u32 count = filelist.size();
+    printInfo(MODE_SELECTION);
+    printFiles(selected, scroll, count, &filelist, curdir);
+    while ( aptMainLoop() ) {
+        hidScanInput();
+        u32 kDown = hidKeysDown();
+        if (kDown & KEY_DOWN) {
+            if (count < 28) {
+                if (selected < ( count ) ) selected++;
+                else selected=0;
+            }
+            else if (count > 0) {
+                if (selected<14) selected++;
+                else if ( (selected + scroll) < (count - 14) ) scroll++;
+                else if (selected<28) selected++;
+                else { selected = 0; scroll = 0; }
+            }
+            printFiles(selected, scroll, count, &filelist, curdir);
+        }
+        if (kDown & KEY_UP) {
+            if (selected>13) selected--;
+            else if (scroll>0) scroll--;
+            else if (selected>0) selected--;
+            else {
+                if (count>27) { selected = 28; scroll = count - 28; }
+                else if (count>0) selected = count;
+            }
+            printFiles(selected, scroll, count, &filelist, curdir);
+        }
+        if (kDown & KEY_A) {
+            if (selected > 0) {
+                if (filelist[selected+scroll-1].isDir) {
+                    innerpath.push(curdir);
+                    curdir = curdir + filelist[selected+scroll-1].name + "/";
+                    std::vector<entry> newlist = getFileList(curdir, filter);
+                    filelist.swap(newlist);
+                    selected = 0; scroll = 0; count = filelist.size();
+                    printFiles(selected, scroll, count, &filelist, curdir);
+                }
+                else break;
+            }
+        }
+        if (kDown & KEY_B) {
+            if (curdir=="/") return "";
+            else if (!innerpath.empty()) {
+                curdir = innerpath.top();
+                innerpath.pop();
+                std::vector<entry> newlist = getFileList(curdir, filter);
+                filelist.swap(newlist);
+                selected = 0; scroll = 0; count = filelist.size();
+                printFiles(selected, scroll, count, &filelist, curdir);
+            }
+        }
+        if (kDown & KEY_Y) {
+            consoleSelect(&top);
+            Handle fileHandle;
+            std::string path = curdir + filelist[selected+scroll-1].name;
+            Result res = FSUSER_OpenFileDirectly(&fileHandle, ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}, (FS_Path)fsMakePath(PATH_ASCII, path.c_str()), FS_OPEN_READ, 0);
+            if (res) {
+                printf("\x1b[1;0HCouldn't open file.\nPress any key to continue.");
+                waitKey();
+            }
+            else {
+                if (filter=="jpg") {
+                    u64 size;
+                    FSFILE_GetSize(fileHandle, &size);
+                    if ( (size > 0xC800) ) {
+                        printf("\x1b[1;0HImage file is too large.\nPress any key to continue.");
+                        waitKey();
+                    }
+                    else if (size > 0) {
+                        u8* buffer = (u8*)malloc(0xC800);
+                        u32 bufferSize;
+                        FSFILE_Read(fileHandle, &bufferSize, 0, buffer, size);
+                        FSFILE_Close(fileHandle);
+                        drawImage(buffer, bufferSize);
+                        free(buffer);
+                        printFiles(selected, scroll, count, &filelist, curdir);
+                    }
+                    else {
+                        printf("\x1b[1;0HInvalid file.\nPress any key to continue.");
+                        waitKey();
+                    }
+                }
+                else {
+                    u64 size;
+                    FSFILE_GetSize(fileHandle, &size);
+                    if (size > 0x1780) {
+                        printf("\x1b[1;0HText file is too large.\nPress any key to continue.");
+                        waitKey();
+                    }
+                    else {
+                        char buffer[0x1780];
+                        FSFILE_Read(fileHandle, NULL, 0, buffer, size);
+                        FSFILE_Close(fileHandle);
+                        consoleClear();
+                        printf("\x1b[1;0H%s", buffer);
+                        printInfo(MODE_FILE_LIST);
+                    }
+                }
+            }
+            svcCloseHandle(fileHandle);
+        }
+        gfxEndFrame();
+    }
+    return curdir + filelist[selected+scroll-1].name;
+}
+
+void menuMain(u8 *menu) {
+    printInfo(MODE_SELECTION);
+    char text[] = "MAIN MENU\n  Create Notification\n  Notification List\n  Exit";
+    *menu = selectionMenu(text, 3) + 1;
+}
+
+void menuNewsList(u8 *menu) { // TODO: use selection menus for actions
+    u32 selected = 0;
+    u32 scroll = 0;
+    u8 timer = 100;
+    u32 total;
+    NEWS_GetTotalNotifications(&total);
+
+    printNews(selected, scroll, true);
+
+    while ( aptMainLoop() )
+    {
+        // return if there are no notifications
+        if (total==0) {
+            consoleSelect(&bot);
+            consoleClear();
+            printf("\x1b[0;0HYou don't have any notifications!\nPress any key to continue.");
+            waitKey();
+            *menu = MENU_MAIN;
+            break;
+        }
+
+        hidScanInput();
+        u32 kDown = hidKeysDown();
+        u32 kHeld = hidKeysHeld();
+
+        // move cursor
+        if (kDown & KEY_DOWN) {
+            if (total < 29) {
+                if (selected < ( total - 1) ) selected++;
+                else selected=0;
+            }
+            else if (total > 0) {
+                if (selected<14) selected++;
+                else if ( (selected + scroll) < (total - 15) ) scroll++;
+                else if (selected<28) selected++;
+                else { selected = 0; scroll = 0; }
+            }
+            printNews(selected, scroll, true);
+        }
+        if (kDown & KEY_UP) {
+            if (selected>13) selected--;
+            else if (scroll>0) scroll--;
+            else if (selected>0) selected--;
+            else {
+                if (total>28) { selected = 28; scroll = total - 29; }
+                else if (total>0) selected = total - 1;
+            }
+            printNews(selected, scroll, true);
+        }
+
+        // read news
+        if (kDown & KEY_A) {
+            readNews(selected + scroll);
+            printNews(selected, scroll);
+        }
+
+        // view image
+        if (kDown & KEY_R) {
+            u32 size;
+            NotificationHeader header;
+            NEWS_GetNotificationHeader(selected + scroll, &header);
+            if (header.enableJPEG) {
+                u8* buffer = (u8*)malloc(0x10000);
+                NEWS_GetNotificationImage(selected + scroll, buffer, &size);
+                drawImage(buffer, size);
+                free(buffer);
+                printNews(selected, scroll, true);
+            }
+        }
+
+        // dump news
         if (kDown & KEY_Y) {
             dumpNews(selected + scroll);
             consoleSelect(&top);
             printf("\x1b[27;0HDumped 1 notification to 'SD:/NotifyMii'.");
-            
         }
-        
-        //dump all
+
+        // dump all
         if (kDown & KEY_SELECT) {
             u32 i = 0;
+            consoleSelect(&top);
             while (i < total) {
                 dumpNews(i);
                 i++;
+                printf("\x1b[27;0HDumped %lu notifications to 'SD:/NotifyMii'.", i);
+                gfxEndFrame();
             }
-            consoleSelect(&top);
-            printf("\x1b[26;0HDumped %lu notifications to 'SD:/NotifyMii'.\nPress any key to continue.", total);
-            waitKey();
         }
-        
-        //delete news
+
+        // delete news
         if (kDown & KEY_X) {
             deleteNews(selected + scroll);
             NEWS_GetTotalNotifications(&total);
@@ -230,52 +380,54 @@ void menuList(u8 *menu) {
             printNews(selected, scroll, true);
         }
         
-        //launch process
+        // clear news
+        if (kHeld & KEY_X) {
+            if (timer > 0) timer--;
+            else {
+                if (promptConfirm("Delete ALL notifications?")) clearNews();
+                timer = 100;
+                printNews(selected, scroll, true);
+            }
+        }
+        else timer = 100;
+
+        // launch app
         if (kDown & KEY_START) {
             NotificationHeader header;
             NEWS_GetNotificationHeader(selected + scroll, &header);
-            if (header.processID > 0) {
+            u8 media = MEDIATYPE_SD;
+            while (header.processID > 0) {
                 u32 count;
-                u8 media = MEDIATYPE_SD;
-                AM_GetTitleCount(MEDIATYPE_SD, &count);
+                AM_GetTitleCount((FS_MediaType)media, &count);
                 u64 *ids = new u64[count];
-                AM_GetTitleList(&count, MEDIATYPE_SD, count, ids);
+                AM_GetTitleList(&count, (FS_MediaType)media, count, ids);
                 u32 i = 0;
-                while ( (ids[i] != header.processID) && (i < count) ) {
-                    i++;
-                }
+                while ((ids[i] != header.processID) && (i < count)) i++;
                 delete[] ids;
                 if (i==count) {
-                    i = 0;
-                    media = MEDIATYPE_NAND;
-                    u32 count;
-                    AM_GetTitleCount(MEDIATYPE_NAND, &count);
-                    u64 *ids = new u64[count];
-                    AM_GetTitleList(&count, MEDIATYPE_NAND, count, ids);
-                    u32 i = 0;
-                    while ( (ids[i] != header.processID) && (i < count) ) {
-                        i++;
-                    }
-                    delete[] ids;
-                    if (i==count) {
+                    if (media==MEDIATYPE_SD) media = MEDIATYPE_NAND;
+                    else {
                         consoleSelect(&top);
-                        printf("\x1b[26;0HTitle not found.\nPress any key to continue.");
-                        waitKey();
+                        printf("\x1b[27;0HTitle not found.");
                         break;
                     }
+                    i = 0;
                 }
-                u8 buf0[0x300];
-                u8 buf1[0x20];
-                memset(buf0, 0, 0x300);
-                memset(buf1, 0, 0x20);
-                aptOpenSession();
-                APT_PrepareToDoAppJump(0, header.processID, media);
-                APT_DoAppJump(0x300, 0x20, buf0, buf1);
-                aptCloseSession();
+                else {
+                    u8 buf0[0x300];
+                    u8 buf1[0x20];
+                    memset(buf0, 0, 0x300);
+                    memset(buf1, 0, 0x20);
+                    aptOpenSession();
+                    APT_PrepareToDoAppJump(0, header.processID, media);
+                    APT_DoAppJump(0x300, 0x20, buf0, buf1);
+                    aptCloseSession();
+                    break;
+                }
             }
         }
-        
-        //return to previous menu
+
+        // return to main menu
         if (kDown & KEY_B) {
             *menu = MENU_MAIN;
             break;
@@ -285,953 +437,207 @@ void menuList(u8 *menu) {
     }
 }
 
-
-void menuClear(u8 *menu) {
-    u32 total;
-    u32 deleted = 0;
-	NotificationHeader header = { 0 };
-    NEWS_GetTotalNotifications(&total);
-    u32 i = 0;
-	while (i < total) {
-		Result ret = NEWS_SetNotificationHeader(i, (const NotificationHeader*)&header);
-        if (!ret) deleted++;
-        i++;
-	}
+void menuNewsAddTitle(u8 *menu, char *title) {
+    printInfo(MODE_SELECTION);
+    char text[] = "SELECT INPUT METHOD:\n  Touch keyboard\n  Legacy keyboard\n  Cancel";
+    u8 option = selectionMenu(text, 3);
     consoleSelect(&top);
-	printf("\x1b[1;0H%lu notifications deleted!\nPress any key to continue.", deleted);
-    waitKey();
-    *menu = MENU_MAIN;
-}
-
-
-void menuAddMessageSelect(u8 *menu) {
-    u8 selected = 0;
-    
-    consoleSelect(&top);
-    printf("\x1b[29;0H\x1b[47;30mD-PAD: Navigate / A: Select / B: Back             \x1b[0m");
-    
-    consoleSelect(&bot);
-    printf("\x1b[0;1HSELECT MESSAGE SOURCE:");
-    printf("\x1b[1;2HWrite a message");
-    printf("\x1b[2;2HUse a text file");
-    printf("\x1b[3;2HSelect from notifications");
-    
-    while ( aptMainLoop() )
-    {
-        //scan input
-        hidScanInput();
-        u32 kDown = hidKeysDown();
-        
-        //print cursor
-        printf("\x1b[%u;0H \n>\n ", selected);
-        
-        //move cursor
-        if (kDown & KEY_DOWN) {
-            if (selected<2) selected++;
-        }
-        if (kDown & KEY_UP) {
-            if (selected>0) selected--;
-        }
-        
-        //open selected menu
-        if (kDown & KEY_A) {
-            *menu = MENU_ADD_MESSAGE_KEYBOARD + selected;
-            break;
-        }
-        
-        //ends loop
-        if (kDown & KEY_B) {
-            *menu = MENU_ADD_TITLE;
-            break;
-        }
-        
-        gfxEndFrame();
+    if (option < 2) {
+        printf("\x1b[1;0HNOTIFICATION TITLE:");
+        std::string buffer;
+        if (option==0) buffer = getKeyboardInput(32, std::string(title));
+        else buffer = getKeyboardInputLegacy(32, std::string(title));
+        memcpy(title, buffer.c_str(), 32);
+        if (buffer == "") *menu = MENU_MAIN;
+        else *menu = MENU_NEWS_ADD_MESSAGE;
     }
+    else *menu = MENU_MAIN;
 }
 
-
-void menuAddMessageKeyboard(u8 *menu, char *message) {
-    char buffer[0x1780];
-    memcpy(buffer, message, 0x1780);
-    u32 offset = strlen(buffer);
-    bool shift = false;
-    u8 selected = 0;
-    
+void menuNewsAddMessage(u8 *menu, char *message) {
+    printInfo(MODE_SELECTION);
+    char text[] = "SELECT MESSAGE SOURCE:\n  Type a message (Touch keyboard)\n  Type a message (Legacy keyboard)\n  Use a text file\n  Use a notification\n  Cancel";
+    u8 option = selectionMenu(text, 5);
     consoleSelect(&top);
-    printf("\x1b[28;0H\x1b[47;30mD-PAD: Move / A: Input / B: Back / L: Backspace / \x1b[29;0HSELECT: Shift / START: Confirm                    \x1b[0m");
-    printf("\x1b[1;0HNotification Message:");
-    
-    printKeyboard(selected, shift);
-    printf("\x1b[2;0H%s ", buffer);
-    
-    while ( aptMainLoop() )
-    {
-        //scan input
-        hidScanInput();
-        u32 kDown = hidKeysDown();
-        
-        //scan touch
-        //touchPosition touch;
-        //hidTouchRead(&touch);
-        //printf("\x1b[27;0HTouch: %03d %03d", touch.px, touch.py);
-        
-        //shift keyboard
-        if (kDown & KEY_SELECT) {
-            shift=(!shift);
-            printKeyboard(selected, shift);
-        }
-        
-        //move cursor
-        if (kDown & KEY_LEFT) {
-            if ( (selected % 12) > 0 ) selected--;
-            printKeyboard(selected, shift);
-        }
-        if (kDown & KEY_RIGHT) {
-            if ( (selected % 12) < 11 ) selected++;
-            printKeyboard(selected, shift);
-        }
-        if (kDown & KEY_UP) {
-            if (selected > 11) selected-=12;
-            printKeyboard(selected, shift);
-        }
-        if (kDown & KEY_DOWN) {
-            if (selected < 36) selected+=12;
-            printKeyboard(selected, shift);
-        }
-        
-        //add char
-        if (kDown & KEY_A) {
-            if (offset < 0x1780) {
-                buffer[offset] = getKeyboardChar(selected, shift);
-                offset++;
-                printf("\x1b[2;0H%s ", buffer);
-            }
-        }
-        
-        //delete char
-        if (kDown & KEY_L) {
-            if (offset > 0) offset--;
-            buffer[offset] = '\0';
-            printf("\x1b[2;0H%s ", buffer);
-        }
-        
-        //confirm and continue
-        if (kDown & KEY_START) {
-            memcpy(message, buffer, 0x1780);
-            *menu = MENU_ADD_IMAGE_SELECT;
+    switch (option) {
+        case 0: case 1: {
+            printf("\x1b[1;0HNOTIFICATION MESSAGE:");
+            std::string buffer;
+            if (option==0) buffer = getKeyboardInput(0x1780, std::string(message));
+            else buffer = getKeyboardInputLegacy(0x1780, std::string(message));
+            memcpy(message, buffer.c_str(), 0x1780);
+            if (buffer == "") break;
+            else *menu = MENU_NEWS_ADD_IMAGE;
             break;
         }
-        
-        //return to previous menu
-        if (kDown & KEY_B) {
-            *menu = MENU_ADD_MESSAGE_SELECT;
-            break;
-        }
-        
-        gfxEndFrame();
-    }
-}
-
-
-void menuAddMessageFile(u8 *menu, char *message) {
-    u32 selected = 0;
-    u32 scroll = 0;
-    std::string curdir = "/";
-    std::stack<std::string> innerpath;
-    std::vector<entry> filelist = getFileList(curdir, "txt");
-    u32 count = filelist.size();
-    
-    consoleSelect(&top);
-    printf("\x1b[29;0H\x1b[47;30mD-PAD: Navigate / A: Select / Y: Preview / B: Back\x1b[0m");
-    
-    printFiles(selected, scroll, count, &filelist, curdir);
-    
-    while ( aptMainLoop() ) {
-        //scan input
-        hidScanInput();
-        u32 kDown = hidKeysDown();
-        
-        //move cursor
-        if (kDown & KEY_DOWN) {
-            if (count < 28) {
-                if (selected < ( count ) ) selected++;
-                else selected=0;
-            }
-            else if (count > 0) {
-                if (selected<14) selected++;
-                else if ( (selected + scroll) < (count - 14) ) scroll++;
-                else if (selected<28) selected++;
-                else { selected = 0; scroll = 0; }
-            }
-            printFiles(selected, scroll, count, &filelist, curdir);
-        }
-        if (kDown & KEY_UP) {
-            if (selected>13) selected--;
-            else if (scroll>0) scroll--;
-            else if (selected>0) selected--;
-            else {
-                if (count>27) { selected = 28; scroll = count - 28; }
-                else if (count>0) selected = count;
-            }
-            printFiles(selected, scroll, count, &filelist, curdir);
-        }
-        
-        //select file
-        if (kDown & KEY_A) {
-            if (selected > 0) {
-                if ( filelist[selected+scroll-1].isDir ) {
-                    innerpath.push(curdir);
-                    curdir = curdir + filelist[selected+scroll-1].name + "/";
-                    std::vector<entry> newlist = getFileList(curdir, "txt");
-                    filelist.swap(newlist);
-                    selected = 0; scroll = 0; count = filelist.size();
-                    printFiles(selected, scroll, count, &filelist, curdir);
-                }
-                else {
-                    u32 bytes;
-                    Handle fileHandle;
-                    FS_Archive sdmcArchive=(FS_Archive){ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
-                    std::string path = curdir + filelist[selected+scroll-1].name;
-                    FS_Path filePath=fsMakePath(PATH_ASCII, path.c_str());
-                    Result res = FSUSER_OpenFileDirectly( &fileHandle, sdmcArchive, filePath, FS_OPEN_READ, 0x00000000);
-                    if (res) {
-                        printf("\x1b[1;0HCouldn't open %s.\nPress any key to continue.", filelist[selected+scroll-1].name.c_str());
-                        waitKey();
-                    }
-                    else {
-                        u64 size;
-                        FSFILE_GetSize(fileHandle, &size);
-                        if (size > 0x1780) {
-                            consoleSelect(&top);
-                            printf("\x1b[1;0HText file too large.\nPress any key to continue.");
-                            waitKey();
-                        }
-                        else {
-                            memset(message, '\0', 0x1780);
-                            FSFILE_Read(fileHandle, &bytes, 0, message, size);
-                            FSFILE_Close(fileHandle);
-                            *menu = MENU_ADD_IMAGE_SELECT;
-                            svcCloseHandle(fileHandle);
-                            break;
-                        }
-                    }
-                    svcCloseHandle(fileHandle);
-                }
+        case 2: {
+            std::string filepath = getFileName("txt");
+            if (filepath=="") break;
+            u32 bytes;
+            Handle fileHandle;
+            Result res = FSUSER_OpenFileDirectly(&fileHandle, ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}, (FS_Path)fsMakePath(PATH_ASCII, filepath.c_str()), FS_OPEN_READ, 0);
+            if (res) {
+                printf("\x1b[1;0HCouldn't open file.\nPress any key to continue.");
+                waitKey();
             }
             else {
-                if (curdir!="/") {
-                    curdir = innerpath.top();
-                    innerpath.pop();
-                    std::vector<entry> newlist = getFileList(curdir, "txt");
-                    filelist.swap(newlist);
-                    selected = 0; scroll = 0; count = filelist.size();
-                    printFiles(selected, scroll, count, &filelist, curdir);
-                }
-            }
-        }
-        
-        //preview file
-        if (kDown & KEY_Y) {
-            if (selected > 0) {
-                if ( !filelist[selected+scroll-1].isDir ) {
-                    u32 bytes;
-                    Handle fileHandle;
-                    FS_Archive sdmcArchive=(FS_Archive){ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
-                    std::string path = curdir + filelist[selected+scroll-1].name;
-                    FS_Path filePath=fsMakePath(PATH_ASCII, path.c_str());
-                    Result res = FSUSER_OpenFileDirectly( &fileHandle, sdmcArchive, filePath, FS_OPEN_READ, 0x00000000);
-                    if (res) {
-                        printf("\x1b[1;0HCouldn't open %s.\nPress any key to continue.", filelist[selected+scroll-1].name.c_str());
-                        waitKey();
-                    }
-                    else {
-                        u64 size;
-                        FSFILE_GetSize(fileHandle, &size);
-                        if (size > 0x1780) {
-                            consoleSelect(&top);
-                            printf("\x1b[1;0HText file too large.\nPress any key to continue.");
-                            waitKey();
-                        }
-                        else {
-                            memset(message, '\0', 0x1780);
-                            FSFILE_Read(fileHandle, &bytes, 0, message, size);
-                            FSFILE_Close(fileHandle);
-                            consoleSelect(&top);
-                            consoleClear();
-                            printf("\x1b[1;0H%s", message);
-                            printf("\x1b[0;0H\x1b[47;30mNotifyMii v1.2                                    \x1b[0m");
-                            printf("\x1b[29;0H\x1b[47;30mD-PAD: Navigate / A: Select / Y: Preview / B: Back\x1b[0m");
-                        }
-                    }
-                    svcCloseHandle(fileHandle);
-                }
-            }
-        }
-        
-        //return to previous menu
-        if (kDown & KEY_B) {
-            if (curdir=="/") {
-                memset(message, '\0', 0x1780);
-                *menu = MENU_ADD_MESSAGE_SELECT;
-                break;
-            }
-            else if (!innerpath.empty()) {
-                curdir = innerpath.top();
-                innerpath.pop();
-                std::vector<entry> newlist = getFileList(curdir, "txt");
-                filelist.swap(newlist);
-                selected = 0; scroll = 0; count = filelist.size();
-                printFiles(selected, scroll, count, &filelist, curdir);
-            }
-        }
-        
-        gfxEndFrame();
-    }
-}
-
-
-void menuAddMessageNews(u8 *menu, char *message) {
-    u32 selected = 0;
-    u32 scroll = 0;
-    
-    u32 total;
-    NEWS_GetTotalNotifications(&total);
-    
-    consoleSelect(&top);
-    printf("\x1b[29;0H\x1b[47;30mD-PAD: Navigate / A: Select / Y: Preview / B: Back\x1b[0m");
-    
-    printNews(selected, scroll, false);
-    
-    while ( aptMainLoop() )
-    {
-        //scan input
-        hidScanInput();
-        u32 kDown = hidKeysDown();
-        
-        //move cursor
-        if (kDown & KEY_DOWN) {
-            if (total < 29) {
-                if (selected < ( total - 1) ) selected++;
-                else selected=0;
-            }
-            else if (total > 0) {
-                if (selected<14) selected++;
-                else if ( (selected + scroll) < (total - 15) ) scroll++;
-                else if (selected<28) selected++;
-                else { selected = 0; scroll = 0; }
-            }
-            printNews(selected, scroll, false);
-        }
-        if (kDown & KEY_UP) {
-            if (selected>13) selected--;
-            else if (scroll>0) scroll--;
-            else if (selected>0) selected--;
-            else {
-                if (total>28) { selected = 28; scroll = total - 29; }
-                else if (total>0) selected = total - 1;
-            }
-            printNews(selected, scroll, false);
-        }
-        
-        //select news
-        if (kDown & KEY_A) {
-            u16 tmp[0x1780];
-            NEWS_GetNotificationMessage(selected + scroll, tmp);
-            utf2ascii(message, tmp);
-            *menu = MENU_ADD_IMAGE_SELECT;
-            break;
-        }
-        
-        //preview news
-        if (kDown & KEY_Y) {
-            u16 tmp[0x1780];
-            NEWS_GetNotificationMessage(selected + scroll, tmp);
-            utf2ascii(message, tmp);
-            consoleSelect(&top);
-            consoleClear();
-            printf("\x1b[1;0H%s", message);
-            printf("\x1b[0;0H\x1b[47;30mNotifyMii v1.2                                    \x1b[0m");
-            printf("\x1b[29;0H\x1b[47;30mD-PAD: Navigate / A: Select / Y: Preview / B: Back\x1b[0m");
-            printNews(selected, scroll, false);
-        }
-        
-        //return to previous menu
-        if (kDown & KEY_B) {
-            memset(message, '\0', 0x1780);
-            *menu = MENU_ADD_MESSAGE_SELECT;
-            break;
-        }
-        
-        gfxEndFrame();
-    }
-}
-
-
-void menuAddImageSelect(u8 *menu) {
-    u8 selected = 0;
-    
-    consoleSelect(&top);
-    printf("\x1b[29;0H\x1b[47;30mD-PAD: Navigate / A: Select / B: Back             \x1b[0m");
-    
-    consoleSelect(&bot);
-    printf("\x1b[0;1HSELECT IMAGE SOURCE:");
-    printf("\x1b[1;2HUse 'default.jpg'");
-    printf("\x1b[2;2HSelect from SD card");
-    printf("\x1b[3;2HSelect from notifications");
-    printf("\x1b[4;2HDon't use an image");
-    
-    while ( aptMainLoop() )
-    {
-        //scan input
-        hidScanInput();
-        u32 kDown = hidKeysDown();
-        
-        //print cursor
-        printf("\x1b[%u;0H \n>\n ", selected);
-        
-        //move cursor
-        if (kDown & KEY_DOWN) {
-            if (selected<3) selected++;
-        }
-        if (kDown & KEY_UP) {
-            if (selected>0) selected--;
-        }
-        
-        //open selected menu
-        if (kDown & KEY_A) {
-            *menu = MENU_ADD_IMAGE_DEFAULT + selected;
-            break;
-        }
-        
-        //ends loop
-        if (kDown & KEY_B) {
-            *menu = MENU_ADD_MESSAGE_SELECT;
-            break;
-        }
-        
-        gfxEndFrame();
-    }
-}
-
-
-void menuAddImageDefault(u8 *menu, u8 *image, u32 *imgSize) {
-    consoleSelect(&top);
-    Handle imgHandle;
-    FS_Archive sdmcArchive = (FS_Archive){ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
-    char filePath[] = "/NotifyMii/default.jpg";
-    FS_Path imgPath = fsMakePath(PATH_ASCII, filePath);
-    Result res = FSUSER_OpenFileDirectly( &imgHandle, sdmcArchive, imgPath, FS_OPEN_READ, 0x00000000);
-    if (res) {
-        printf("\x1b[1;0HCouldn't open 'default.jpg'.\nPress any key to continue.");
-        waitKey();
-        *menu = MENU_ADD_IMAGE_SELECT;
-    }
-    else {
-        u64 size;
-        FSFILE_GetSize(imgHandle, &size);
-        if (size > 0xC800) {
-            consoleSelect(&top);
-            printf("\x1b[1;0HImage file too large.\nPress any key to continue.");
-            waitKey();
-            *menu = MENU_ADD_MESSAGE_SELECT;
-        }
-        else {
-            FSFILE_Read(imgHandle, imgSize, 0, image, size);
-            FSFILE_Close(imgHandle);
-            *menu = MENU_ADD_PROCESS_SELECT;
-        }
-    }
-    svcCloseHandle(imgHandle);
-}
-
-
-void menuAddImageFile(u8 *menu, u8 *image, u32 *imgSize) {
-    u32 selected = 0;
-    u32 scroll = 0;
-    std::string curdir = "/";
-    std::stack<std::string> innerpath;
-    std::vector<entry> filelist = getFileList(curdir, "jpg");
-    u32 count = filelist.size();
-    
-    consoleSelect(&top);
-    printf("\x1b[29;0H\x1b[47;30mD-PAD: Navigate / A: Select / Y: Preview / B: Back\x1b[0m");
-    
-    printFiles(selected, scroll, count, &filelist, curdir);
-    
-    while ( aptMainLoop() ) {
-        //scan input
-        hidScanInput();
-        u32 kDown = hidKeysDown();
-        
-        //move cursor
-        if (kDown & KEY_DOWN) {
-            if (count < 28) {
-                if (selected < ( count ) ) selected++;
-                else selected=0;
-            }
-            else if (count > 0) {
-                if (selected<14) selected++;
-                else if ( (selected + scroll) < (count - 14) ) scroll++;
-                else if (selected<28) selected++;
-                else { selected = 0; scroll = 0; }
-            }
-            printFiles(selected, scroll, count, &filelist, curdir);
-        }
-        if (kDown & KEY_UP) {
-            if (selected>13) selected--;
-            else if (scroll>0) scroll--;
-            else if (selected>0) selected--;
-            else {
-                if (count>27) { selected = 28; scroll = count - 28; }
-                else if (count>0) selected = count;
-            }
-            printFiles(selected, scroll, count, &filelist, curdir);
-        }
-        
-        //select file
-        if (kDown & KEY_A) {
-            if (selected > 0) {
-                if ( filelist[selected+scroll-1].isDir ) {
-                    innerpath.push(curdir);
-                    curdir = curdir + filelist[selected+scroll-1].name + "/";
-                    std::vector<entry> newlist = getFileList(curdir, "jpg");
-                    filelist.swap(newlist);
-                    selected = 0; scroll = 0; count = filelist.size();
-                    printFiles(selected, scroll, count, &filelist, curdir);
-                }
-                else {
-                    Handle fileHandle;
-                    FS_Archive sdmcArchive=(FS_Archive){ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
-                    std::string path = curdir + filelist[selected+scroll-1].name;
-                    FS_Path filePath=fsMakePath(PATH_ASCII, path.c_str());
-                    Result res = FSUSER_OpenFileDirectly( &fileHandle, sdmcArchive, filePath, FS_OPEN_READ, 0x00000000);
-                    if (res) {
-                        printf("\x1b[1;0HCouldn't open %s.\nPress any key to continue.", filelist[selected+scroll-1].name.c_str());
-                        waitKey();
-                    }
-                    else {
-                        u64 size;
-                        FSFILE_GetSize(fileHandle, &size);
-                        if (size > 0xC800) {
-                            consoleSelect(&top);
-                            printf("\x1b[1;0HImage file too large.\nPress any key to continue.");
-                            waitKey();
-                        }
-                        else {
-                            FSFILE_Read(fileHandle, imgSize, 0, image, size);
-                            FSFILE_Close(fileHandle);
-                            *menu = MENU_ADD_PROCESS_SELECT;
-                            svcCloseHandle(fileHandle);
-                            break;
-                        }
-                    }
-                    svcCloseHandle(fileHandle);
-                }
-            }
-            else {
-                if (curdir!="/") {
-                    curdir = innerpath.top();
-                    innerpath.pop();
-                    std::vector<entry> newlist = getFileList(curdir, "jpg");
-                    filelist.swap(newlist);
-                    selected = 0; scroll = 0; count = filelist.size();
-                    printFiles(selected, scroll, count, &filelist, curdir);
-                }
-            }
-        }
-        
-        //preview image
-        if (kDown & KEY_Y) {
-            if (selected > 0) {
-                if ( !filelist[selected+scroll-1].isDir ) {
-                    Handle fileHandle;
-                    FS_Archive sdmcArchive=(FS_Archive){ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}};
-                    std::string path = curdir + filelist[selected+scroll-1].name;
-                    FS_Path filePath=fsMakePath(PATH_ASCII, path.c_str());
-                    Result res = FSUSER_OpenFileDirectly( &fileHandle, sdmcArchive, filePath, FS_OPEN_READ, 0x00000000);
-                    if (res) {
-                        printf("\x1b[1;0HCouldn't open %s.\nPress any key to continue.", filelist[selected+scroll-1].name.c_str());
-                        waitKey();
-                    }
-                    else {
-                        u64 size;
-                        FSFILE_GetSize(fileHandle, &size);
-                        if ( (size > 0xC800) ) {
-                            consoleSelect(&top);
-                            printf("\x1b[1;0HImage file too large.\nPress any key to continue.");
-                            waitKey();
-                        }
-                        else if (size > 0) {
-                            u8* buffer = (u8*)malloc(0xC800);
-                            u32 bufferSize;
-                            FSFILE_Read(fileHandle, &bufferSize, 0, buffer, size);
-                            FSFILE_Close(fileHandle);
-                            drawImage(buffer, bufferSize);
-                            free(buffer);
-                            consoleSelect(&top);
-                            printf("\x1b[0;0H\x1b[47;30mNotifyMii v1.2                                    \x1b[0m");
-                            printf("\x1b[29;0H\x1b[47;30mD-PAD: Navigate / A: Select / Y: Preview / B: Back\x1b[0m");
-                            printFiles(selected, scroll, count, &filelist, curdir);
-                        }
-                        else {
-                            consoleSelect(&top);
-                            printf("\x1b[1;0HInvalid file.\nPress any key to continue.");
-                            waitKey();
-                        }
-                    }
-                    svcCloseHandle(fileHandle);
-                }
-            }
-        }
-        
-        //return to previous menu
-        if (kDown & KEY_B) {
-            if (curdir=="/") {
-                *menu = MENU_ADD_IMAGE_SELECT;
-                break;
-            }
-            else if (!innerpath.empty()){
-                curdir = innerpath.top();
-                innerpath.pop();
-                std::vector<entry> newlist = getFileList(curdir, "jpg");
-                filelist.swap(newlist);
-                selected = 0; scroll = 0; count = filelist.size();
-                printFiles(selected, scroll, count, &filelist, curdir);
-            }
-        }
-        
-        gfxEndFrame();
-    }
-}
-
-
-void menuAddImageNews(u8 *menu, u8 *image, u32 *imgSize) {
-    u32 selected = 0;
-    u32 scroll = 0;
-    
-    u32 total;
-    NEWS_GetTotalNotifications(&total);
-    
-    consoleSelect(&top);
-    printf("\x1b[29;0H\x1b[47;30mD-PAD: Navigate / A: Select / Y: Preview / B: Back\x1b[0m");
-    
-    printNews(selected, scroll, false);
-    
-    while ( aptMainLoop() )
-    {
-        //scan input
-        hidScanInput();
-        u32 kDown = hidKeysDown();
-        
-        //move cursor
-        if (kDown & KEY_DOWN) {
-            if (total < 29) {
-                if (selected < ( total - 1) ) selected++;
-                else selected=0;
-            }
-            else if (total > 0) {
-                if (selected<14) selected++;
-                else if ( (selected + scroll) < (total - 15) ) scroll++;
-                else if (selected<28) selected++;
-                else { selected = 0; scroll = 0; }
-            }
-            printNews(selected, scroll, false);
-        }
-        if (kDown & KEY_UP) {
-            if (selected>13) selected--;
-            else if (scroll>0) scroll--;
-            else if (selected>0) selected--;
-            else {
-                if (total>28) { selected = 28; scroll = total - 29; }
-                else if (total>0) selected = total - 1;
-            }
-            printNews(selected, scroll, false);
-        }
-        
-        //select news
-        if (kDown & KEY_A) {
-            NotificationHeader header;
-            NEWS_GetNotificationHeader(selected + scroll, &header);
-            if (header.enableJPEG) {
-                Result res = NEWS_GetNotificationImage(selected + scroll, image, imgSize);
-                if (res) {
-                    consoleSelect(&top);
-                    printf("\x1b[1;0HFailed to get notification image.\nPress any key to continue.");
+                u64 size;
+                FSFILE_GetSize(fileHandle, &size);
+                if (size > 0x1780) {
+                    printf("\x1b[1;0HText file is too large.\nPress any key to continue.");
                     waitKey();
-                    *menu = MENU_ADD_IMAGE_SELECT;
-                    break;
                 }
                 else {
-                    *menu = MENU_ADD_PROCESS_SELECT;
-                    break;
+                    memset(message, '\0', 0x1780);
+                    Result res = FSFILE_Read(fileHandle, &bytes, 0, message, size);
+                    FSFILE_Close(fileHandle);
+                    if (!res) *menu = MENU_NEWS_ADD_IMAGE;
+                    else {
+                        printf("\x1b[1;0HError reading file.\nPress any key to continue.");
+                        waitKey();
+                    }
+                }
+            }
+            svcCloseHandle(fileHandle);
+            break;
+        }
+        case 3: {
+            u8 newsid = getNotificationID();
+            if (newsid==0xFF) break;
+            u16 buffer[0x1780];
+            Result res = NEWS_GetNotificationMessage(newsid, buffer, NULL);
+            utf2ascii(message, buffer);
+            if (!res) *menu = MENU_NEWS_ADD_IMAGE;
+            else {
+                printf("\x1b[1;0HFailed to get notification's message.\nPress any key to continue.");
+                waitKey();
+            }
+            break;
+        }
+        default: {
+            *menu = MENU_NEWS_ADD_TITLE;
+            break;
+        }
+    }
+}
+
+void menuNewsAddImage(u8 *menu, u8 *image, u32 *imgSize) {
+    printInfo(MODE_SELECTION);
+    char text[] = "SELECT IMAGE SOURCE:\n  Use default.jpg\n  Select from SD card\n  Select from notification\n  Nintendo 3DS Camera\n  No image\n  Cancel";
+    u8 option = selectionMenu(text, 6);
+    consoleSelect(&top);
+    switch (option) {
+        case 0: case 1: {
+            std::string filepath = "/NotifyMii/default.jpg";
+            if (option==1) filepath = getFileName("jpg");
+            if (filepath=="") break;
+            Handle imgHandle;
+            Result res = FSUSER_OpenFileDirectly(&imgHandle, ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}, (FS_Path)fsMakePath(PATH_ASCII, filepath.c_str()), FS_OPEN_READ, 0);
+            if (res) {
+                printf("\x1b[1;0HCouldn't open 'default.jpg'.\nPress any key to continue.");
+                waitKey();
+            }
+            else {
+                u64 size;
+                FSFILE_GetSize(imgHandle, &size);
+                if (size > 0xC800) {
+                    printf("\x1b[1;0HImage file is too large.\nPress any key to continue.");
+                    waitKey();
+                }
+                else {
+                    Result res = FSFILE_Read(imgHandle, imgSize, 0, image, size);
+                    FSFILE_Close(imgHandle);
+                    if (!res) *menu = MENU_NEWS_ADD_PROCESS;
+                    else {
+                        printf("\x1b[1;0HError reading file.\nPress any key to continue.");
+                        waitKey();
+                    }
+                }
+            }
+            svcCloseHandle(imgHandle);
+            break;
+        }
+        case 2: {
+            u8 newsid = getNotificationID();
+            if (newsid==0xFF) break;
+            NotificationHeader header;
+            NEWS_GetNotificationHeader(newsid, &header);
+            if (header.enableJPEG) {
+                Result res = NEWS_GetNotificationImage(newsid, image, imgSize);
+                if (!res) *menu = MENU_NEWS_ADD_PROCESS;
+                else {
+                    printf("\x1b[1;0HFailed to get notification's image.\nPress any key to continue.");
+                    waitKey();
                 }
             }
             else {
-                consoleSelect(&top);
                 printf("\x1b[1;0HNotification has no image.\nPress any key to continue.");
                 waitKey();
-                *menu = MENU_ADD_IMAGE_SELECT;
-                break;
             }
+            break;
         }
-        
-        //preview image
-        if (kDown & KEY_Y) {
-            u32 size;
+        case 3: {
+            printf("\x1b[1;0HNot implemented yet.\nPress any key to continue.");
+            waitKey();
+            break;
+        }
+        case 4: {
+            *imgSize = 0;
+            *menu = MENU_NEWS_ADD_PROCESS;
+            break;
+        }
+        default: {
+            *menu = MENU_NEWS_ADD_MESSAGE;
+            break;
+        }
+    }
+}
+
+void menuNewsAddProcess(u8 *menu, u64 *processID) {
+    printInfo(MODE_SELECTION);
+    char text[] = "SELECT PROCESS ID SOURCE:\n  NotifyMii\n  Select from installed title\n  Select from notification\n  Default\n  Cancel";
+    u8 option = selectionMenu(text, 5);
+    consoleSelect(&top);
+    switch (option) {
+        case 0: {
+            *processID = 0x000400000ed99000LL;
+            *menu = MENU_NEWS_ADD;
+            break;
+        }
+        case 1: {
+            u64 tid = getTitleID();
+            if (tid==0) break;
+            *processID = tid;
+            *menu = MENU_NEWS_ADD;
+            break;
+        }
+        case 2: {
+            u8 newsid = getNotificationID();
+            if (newsid==0xFF) break;
             NotificationHeader header;
-            NEWS_GetNotificationHeader(selected + scroll, &header);
-            if (header.enableJPEG) {
-                u8* buffer = (u8*)malloc(0xC800);
-                NEWS_GetNotificationImage(selected + scroll, buffer, &size);
-                drawImage(buffer, size);
-                free(buffer);
-                consoleSelect(&top);
-                printf("\x1b[0;0H\x1b[47;30mNotifyMii v1.2                                    \x1b[0m");
-                printf("\x1b[29;0H\x1b[47;30mD-PAD: Navigate / A: Select / Y: Preview / B: Back\x1b[0m");
-                printNews(selected, scroll, false);
+            Result res = NEWS_GetNotificationHeader(newsid, &header);
+            *menu = MENU_NEWS_ADD;
+            if (!res) *processID = header.processID;
+            else {
+                printf("\x1b[1;0HFailed to get notification header.\nPress any key to continue.");
+                waitKey();
+                *menu = MENU_NEWS_ADD_PROCESS;
             }
-        }
-        
-        //return to previous menu
-        if (kDown & KEY_B) {
-            *menu = MENU_ADD_IMAGE_SELECT;
             break;
         }
-        
-        gfxEndFrame();
+        case 3: {
+            *processID = 0;
+            *menu = MENU_NEWS_ADD;
+            break;
+        }
+        default: {
+            *menu = MENU_NEWS_ADD_IMAGE;
+            break;
+        }
     }
 }
 
-
-void menuAddImageEmpty(u8 *menu, u8 *image, u32 *imgSize, bool *hasImage) {
-    memset(image, 0, 0xC800);
-    *imgSize = 0xC800;
-    *hasImage = false;
-    *menu = MENU_ADD_PROCESS_SELECT;
-}
-
-
-void menuAddProcessSelect(u8 *menu, u64 *processID) {
-    u8 selected = 0;
-    *processID = 0;
-    
-    consoleSelect(&top);
-    printf("\x1b[29;0H\x1b[47;30mD-PAD: Navigate / A: Select / B: Back             \x1b[0m");
-    
-    consoleSelect(&bot);
-    printf("\x1b[0;1HSELECT NOTIFICATION ORIGIN PROCESS:");
-    printf("\x1b[1;2HUse NotifyMii");
-    printf("\x1b[2;2HSelect from installed titles");
-    printf("\x1b[3;2HSelect from notifications");
-    printf("\x1b[4;2HDon't use any title");
-    
-    while ( aptMainLoop() )
-    {
-        //scan input
-        hidScanInput();
-        u32 kDown = hidKeysDown();
-        
-        //print cursor
-        printf("\x1b[%u;0H \n>\n ", selected);
-        
-        //move cursor
-        if (kDown & KEY_DOWN) {
-            if (selected<3) selected++;
-        }
-        if (kDown & KEY_UP) {
-            if (selected>0) selected--;
-        }
-        
-        //open selected menu
-        if (kDown & KEY_A) {
-            *menu = MENU_ADD_PROCESS_SELF + selected;
-            break;
-        }
-        
-        //ends loop
-        if (kDown & KEY_B) {
-            *menu = MENU_ADD_IMAGE_SELECT;
-            break;
-        }
-        
-        gfxEndFrame();
-    }
-}
-
-
-void menuAddProcessSelf(u8 *menu, u64 *processID) {
-    *processID = 0x000400000ed99000LL;
-    *menu = MENU_ADD_NEWS;
-}
-
-
-void menuAddProcessBrowse(u8 *menu, u64 *processID) {
-    u32 selected = 0;
-    u32 scroll = 0;
-    u32 count;
-    bool getmedia = true;
-    std::vector<u64> titles;
-    FS_MediaType media = MEDIATYPE_NAND;
-    
-    consoleSelect(&top);
-    printf("\x1b[29;0H\x1b[47;30mD-PAD: Navigate / A: Select / B: Back             \x1b[0m");
-    
-    consoleSelect(&bot);
-    printf("\x1b[0;1HSELECT SOURCE:");
-    printf("\x1b[1;2HNAND");
-    printf("\x1b[2;2HSD");
-    
-    while ( aptMainLoop() )
-    {
-        //scan input
-        hidScanInput();
-        u32 kDown = hidKeysDown();
-        
-        //print cursor
-        if (getmedia) printf("\x1b[%lu;0H \n>\n ", selected);
-        
-        //move cursor
-        if (kDown & KEY_DOWN) {
-            if (getmedia)
-                selected=(!selected);
-            else {
-                if (count < 29) {
-                if (selected < ( count - 1) ) selected++;
-                else selected=0;
-                }
-                else if (count > 0) {
-                    if (selected<14) selected++;
-                    else if ( (selected + scroll) < (count - 15) ) scroll++;
-                    else if (selected<28) selected++;
-                    else { selected = 0; scroll = 0; }
-                }
-                printTitles(selected, scroll, count, &titles, media);
-            }
-            
-        }
-        if (kDown & KEY_UP) {
-            if (getmedia)
-                selected=(!selected);
-            else {
-                if (selected>13) selected--;
-                else if (scroll>0) scroll--;
-                else if (selected>0) selected--;
-                else {
-                    if (count>28) { selected = 28; scroll = count - 29; }
-                    else if (count>0) selected = count - 1;
-                }
-                printTitles(selected, scroll, count, &titles, media);
-            }
-        }
-        
-        //get title or mediatype
-        if (kDown & KEY_A) {
-            if (getmedia) {
-                if (selected==0) media = MEDIATYPE_NAND;
-                else media = MEDIATYPE_SD;
-                std::vector<u64> newlist;
-                AM_GetTitleCount(media, &count);
-                u64 *ids = new u64[count];
-                AM_GetTitleList(&count, media, count, ids);
-                u32 i = 0;
-                while (i < count) {
-                    newlist.push_back(ids[i]);
-                    i++;
-                }
-                delete[] ids;
-                titles.swap(newlist);
-                selected = 0;
-                printTitles(selected, scroll, count, &titles, media);
-                getmedia = false;
-            }
-            else {
-                *processID = titles[selected + scroll];
-                *menu = MENU_ADD_NEWS;
-                break;
-            }
-        }
-        
-        //ends loop
-        if (kDown & KEY_B) {
-            *menu = MENU_ADD_PROCESS_SELECT;
-            break;
-        }
-        
-        gfxEndFrame();
-    }
-}
-
-
-void menuAddProcessNews(u8 *menu, u64 *processID) {
-    u32 selected = 0;
-    u32 scroll = 0;
-    
-    u32 total;
-    NEWS_GetTotalNotifications(&total);
-    
-    printNews(selected, scroll, true);
-    
-    consoleSelect(&top);
-    printf("\x1b[29;0H\x1b[47;30mD-PAD: Navigate / A: Select / B: Back             \x1b[0m");
-    
-    while ( aptMainLoop() )
-    {
-        //scan input
-        hidScanInput();
-        u32 kDown = hidKeysDown();
-        
-        //move cursor
-        if (kDown & KEY_DOWN) {
-            if (total < 29) {
-                if (selected < ( total - 1) ) selected++;
-                else selected=0;
-            }
-            else if (total > 0) {
-                if (selected<14) selected++;
-                else if ( (selected + scroll) < (total - 15) ) scroll++;
-                else if (selected<28) selected++;
-                else { selected = 0; scroll = 0; }
-            }
-            printNews(selected, scroll, true);
-            consoleSelect(&top);
-            printf("\x1b[28;0H%50c", ' ');
-            printf("\x1b[29;0H\x1b[47;30mD-PAD: Navigate / A: Select / B: Back             \x1b[0m");
-        }
-        if (kDown & KEY_UP) {
-            if (selected>13) selected--;
-            else if (scroll>0) scroll--;
-            else if (selected>0) selected--;
-            else {
-                if (total>28) { selected = 28; scroll = total - 29; }
-                else if (total>0) selected = total - 1;
-            }
-            printNews(selected, scroll, true);
-            consoleSelect(&top);
-            printf("\x1b[28;0H%50c", ' ');
-            printf("\x1b[29;0H\x1b[47;30mD-PAD: Navigate / A: Select / B: Back             \x1b[0m");
-        }
-        
-        //select news
-        if (kDown & KEY_A) {
-            NotificationHeader header;
-            NEWS_GetNotificationHeader(selected + scroll, &header);
-            *processID = header.processID;
-            *menu = MENU_ADD_NEWS;
-            break;
-        }
-        
-        //return to previous menu
-        if (kDown & KEY_B) {
-            *menu = MENU_ADD_PROCESS_SELECT;
-            break;
-        }
-        
-        gfxEndFrame();
-    }
-}
-
-
-void menuAddNews(u8 *menu, char *title_c, char *message_c, u8 *image, u32 *imgSize, bool *hasImage, u64 *processID) {
+void menuAddNews(u8 *menu, char *title_c, char *message_c, u8 *image, u32 imgSize, u64 processID, news_flags flags) {
     u32 total;
     NEWS_GetTotalNotifications(&total);
     u32 titleSize = strlen(title_c);
@@ -1240,18 +646,30 @@ void menuAddNews(u8 *menu, char *title_c, char *message_c, u8 *image, u32 *imgSi
     u16* message = (u16*)malloc(0x1780 * sizeof(u16));
     ascii2utf(title, title_c);
     ascii2utf(message, message_c);
-    Result res = NEWS_AddNotification(title, titleSize, message, msgSize, image, *imgSize, *hasImage);
+    bool hasImage = true;
+    if (imgSize==0) {
+        hasImage = false;
+        memset(image, 0, 0xC800);
+        imgSize = 0xC800;
+    }
+    Result res = NEWS_AddNotification(title, titleSize, message, msgSize, image, imgSize, hasImage);
     free(title);
     free(message);
-    NotificationHeader header;
-    NEWS_GetNotificationHeader(total, &header);
-    header.processID = *processID;
-    NEWS_SetNotificationHeader(total, (const NotificationHeader*)&header);
     consoleSelect(&top);
     if (res) printf("\x1b[1;0HFailed! Press any key to continue.");
-    else printf("\x1b[1;0HDone! Press any key to continue.");
+    else {
+        NotificationHeader header;
+        NEWS_GetNotificationHeader(total, &header);
+        header.processID = processID;
+        header.unread = flags.unread;
+        header.isSpotPass = flags.isSpotPass;
+        header.isOptedOut = flags.isOptedOut;
+        NEWS_SetNotificationHeader(total, (const NotificationHeader*)&header);
+        printf("\x1b[1;0HDone! Press any key to continue.");
+    }
     waitKey();
     memset(title_c, '\0', 32);
     memset(message_c, '\0', 0x1780);
+    memset(image, 0, 0xC800);
     *menu = MENU_MAIN;
 }

@@ -23,10 +23,9 @@ Issues:
 TODO:
 - Write a GUI.
 - Touch-based keyboard.
-- Option to mark a notification as unread.
+- Fix flickering when selecting files/titles/notifications.
+- Notification editing.
 - Add flag selection to custom notifications.
-- Add getNotification, getFile, getTitle, getKeyboardInput and getKeyboardInputLegacy.
-- Launch apps using the jumpParam (games/demos notifications uses this to take you right to that game's eShop page).
 
 Credits:
 - Rinnegatamante, as some functions were stolen from Purgification and lpp-3ds.
