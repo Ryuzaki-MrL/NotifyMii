@@ -22,7 +22,6 @@ Issues:
 
 TODO:
 - Write a GUI.
-- Touch-based keyboard.
 - Fix flickering when selecting files/titles/notifications.
 - Notification editing.
 - Add flag selection to custom notifications.
