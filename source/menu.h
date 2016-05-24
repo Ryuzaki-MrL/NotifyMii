@@ -28,7 +28,7 @@ enum {
     */
 };
 
-u8 selectionMenu(char *text, u8 entries);
+u8 selectionMenu(std::string text, u8 entries);
 u8 getNotificationID();
 u64 getTitleID();
 std::string getFileName(std::string filter = "");

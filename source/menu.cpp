@@ -11,12 +11,12 @@
 #include "ui.h"
 #include "keyboard.h"
 
-u8 selectionMenu(char *text, u8 entries) {
+u8 selectionMenu(std::string text, u8 entries) {
     u8 selected = 0;
-    printInfo(MODE_SELECTION);
+    printInfo(MODE_SELECTION, true);
     consoleSelect(&bot);
     consoleClear();
-    printf("\x1b[0;1H%s", text);
+    printf("\x1b[0;1H%s", text.c_str());
     while ( aptMainLoop() ) {
         printf("\x1b[%u;0H \n>\n ", selected);
         hidScanInput();
@@ -30,15 +30,21 @@ u8 selectionMenu(char *text, u8 entries) {
     return selected;
 }
 
-u8 getNotificationID() { // TODO: preview support
+u8 getNotificationID() { // TODO: finish preview support; print correct info
     u32 selected = 0;
     u32 scroll = 0;
     u32 total;
     NEWS_GetTotalNotifications(&total);
-    printInfo(MODE_SELECTION);
+    printInfo(MODE_FILE_LIST);
     printNews(selected, scroll, true);
     while (aptMainLoop()) {
-        if (total==0) return 0;
+        if (total==0) {
+            consoleSelect(&bot);
+            consoleClear();
+            printf("\x1b[0;0HYou don't have any notification!\nPress any key to continue.");
+            waitKey();
+            return 0xFF;
+        }
         hidScanInput();
         u32 kDown = hidKeysDown();
         if (kDown & KEY_DOWN) {
@@ -94,8 +100,7 @@ u64 getTitleID() {
     while ( aptMainLoop() )
     {
         if (getmedia) {
-            char text[] = "SELECT SOURCE:\n  NAND\n  SD";
-            media = (FS_MediaType)selectionMenu(text, 2);
+            media = (FS_MediaType)selectionMenu("SELECT SOURCE:\n  NAND\n  SD", 2);
             if (media==0xFF) return 0;
             AM_GetTitleCount(media, &count);
             if (count==0) return 0;
@@ -118,10 +123,10 @@ u64 getTitleID() {
                     CFGU_GetSystemLanguage(&lang);
                     utf2ascii(shortDesc, smdh.titles[lang].shortDescription);
                 }
-                else memset(shortDesc, 0, 0x40); // Temporarly test
+                else memset(shortDesc, 0, 0x40);
                 titlelist.push_back({ids[i], std::string(shortDesc)});
                 i++;
-                printf("\x1b[27;0HLoaded %lu titles", i);
+                printf("\x1b[29;0HLoaded %lu titles", i);
                 gfxEndFrame();
             }
             delete[] ids;
@@ -162,14 +167,13 @@ u64 getTitleID() {
     return titlelist[selected + scroll].id;
 }
 
-std::string getFileName(std::string filter) { // TODO: fix text preview
+std::string getFileName(std::string filter) {
     u32 selected = 0;
     u32 scroll = 0;
     std::string curdir = "/";
     std::stack<std::string> innerpath;
     std::vector<entry> filelist = getFileList(curdir, filter);
     u32 count = filelist.size();
-    printInfo(MODE_SELECTION);
     printFiles(selected, scroll, count, &filelist, curdir);
     while ( aptMainLoop() ) {
         hidScanInput();
@@ -260,7 +264,7 @@ std::string getFileName(std::string filter) { // TODO: fix text preview
                         waitKey();
                     }
                     else {
-                        char buffer[0x1780];
+                        char buffer[0x1780] = { 0 };
                         FSFILE_Read(fileHandle, NULL, 0, buffer, size);
                         FSFILE_Close(fileHandle);
                         consoleClear();
@@ -278,14 +282,12 @@ std::string getFileName(std::string filter) { // TODO: fix text preview
 
 void menuMain(u8 *menu) {
     printInfo(MODE_SELECTION);
-    char text[] = "MAIN MENU\n  Create Notification\n  Notification List\n  Exit";
-    *menu = selectionMenu(text, 3) + 1;
+    *menu = selectionMenu("MAIN MENU\n  Create Notification\n  Notification List\n  Exit", 3) + 1;
 }
 
 void menuNewsList(u8 *menu) { // TODO: use selection menus for actions
     u32 selected = 0;
     u32 scroll = 0;
-    u8 timer = 100;
     u32 total;
     NEWS_GetTotalNotifications(&total);
 
@@ -297,7 +299,7 @@ void menuNewsList(u8 *menu) { // TODO: use selection menus for actions
         if (total==0) {
             consoleSelect(&bot);
             consoleClear();
-            printf("\x1b[0;0HYou don't have any notifications!\nPress any key to continue.");
+            printf("\x1b[0;0HYou don't have any notification!\nPress any key to continue.");
             waitKey();
             *menu = MENU_MAIN;
             break;
@@ -305,7 +307,6 @@ void menuNewsList(u8 *menu) { // TODO: use selection menus for actions
 
         hidScanInput();
         u32 kDown = hidKeysDown();
-        u32 kHeld = hidKeysHeld();
 
         // move cursor
         if (kDown & KEY_DOWN) {
@@ -355,20 +356,25 @@ void menuNewsList(u8 *menu) { // TODO: use selection menus for actions
         // dump news
         if (kDown & KEY_Y) {
             dumpNews(selected + scroll);
-            consoleSelect(&top);
             printf("\x1b[27;0HDumped 1 notification to 'SD:/NotifyMii'.");
         }
 
-        // dump all
+        // extra options
         if (kDown & KEY_SELECT) {
-            u32 i = 0;
+            u8 option = selectionMenu("EXTRA OPTIONS\n  Dump all\n  Delete all\n  Cancel", 3);
             consoleSelect(&top);
-            while (i < total) {
-                dumpNews(i);
-                i++;
-                printf("\x1b[27;0HDumped %lu notifications to 'SD:/NotifyMii'.", i);
-                gfxEndFrame();
+            if (option==0) {
+                u32 i = 0;
+                while (i < total) {
+                    dumpNews(i);
+                    i++;
+                    printf("\x1b[27;0HDumped %lu notifications to 'SD:/NotifyMii'.", i);
+                    gfxEndFrame();
+                }
+                // printf("\x1b[27;0HDumped %lu notifications to 'SD:/NotifyMii'. Done!", i);
             }
+            else if (option==1) clearNews();
+            printNews(selected, scroll, true);
         }
 
         // delete news
@@ -380,18 +386,10 @@ void menuNewsList(u8 *menu) { // TODO: use selection menus for actions
             printNews(selected, scroll, true);
         }
         
-        // clear news
-        if (kHeld & KEY_X) {
-            if (timer > 0) timer--;
-            else {
-                if (promptConfirm("Delete ALL notifications?")) clearNews();
-                timer = 100;
-                printNews(selected, scroll, true);
-            }
-        }
-        else timer = 100;
+        // mark news
+        if (kDown & KEY_L) printf("\x1b[27;0HNot implemented yet.");
 
-        // launch app
+        // launch software
         if (kDown & KEY_START) {
             NotificationHeader header;
             NEWS_GetNotificationHeader(selected + scroll, &header);
@@ -407,7 +405,6 @@ void menuNewsList(u8 *menu) { // TODO: use selection menus for actions
                 if (i==count) {
                     if (media==MEDIATYPE_SD) media = MEDIATYPE_NAND;
                     else {
-                        consoleSelect(&top);
                         printf("\x1b[27;0HTitle not found.");
                         break;
                     }
@@ -439,16 +436,17 @@ void menuNewsList(u8 *menu) { // TODO: use selection menus for actions
 
 void menuNewsAddTitle(u8 *menu, char *title) {
     printInfo(MODE_SELECTION);
-    char text[] = "SELECT INPUT METHOD:\n  Touch keyboard\n  Legacy keyboard\n  Cancel";
-    u8 option = selectionMenu(text, 3);
+    u8 option = selectionMenu("SELECT INPUT METHOD:\n  Touch keyboard\n  Legacy keyboard\n  Cancel", 3);
     consoleSelect(&top);
     if (option < 2) {
         printf("\x1b[1;0HNOTIFICATION TITLE:");
         std::string buffer;
-        if (option==0) buffer = getKeyboardInput(32, std::string(title));
-        else buffer = getKeyboardInputLegacy(32, std::string(title));
+        // if (option==0) buffer = getKeyboardInput(32, std::string(title));
+        // else buffer = getKeyboardInputLegacy(32, std::string(title));
+        if (option==0) buffer = getKeyboardInput(32);
+        else buffer = getKeyboardInputLegacy(32);
         memcpy(title, buffer.c_str(), 32);
-        if (buffer == "") *menu = MENU_MAIN;
+        if (buffer == "") return;
         else *menu = MENU_NEWS_ADD_MESSAGE;
     }
     else *menu = MENU_MAIN;
@@ -456,15 +454,16 @@ void menuNewsAddTitle(u8 *menu, char *title) {
 
 void menuNewsAddMessage(u8 *menu, char *message) {
     printInfo(MODE_SELECTION);
-    char text[] = "SELECT MESSAGE SOURCE:\n  Type a message (Touch keyboard)\n  Type a message (Legacy keyboard)\n  Use a text file\n  Use a notification\n  Cancel";
-    u8 option = selectionMenu(text, 5);
+    u8 option = selectionMenu("SELECT MESSAGE SOURCE:\n  Type a message (Touch keyboard)\n  Type a message (Legacy keyboard)\n  Use a text file\n  Use a notification\n  Cancel", 5);
     consoleSelect(&top);
     switch (option) {
         case 0: case 1: {
             printf("\x1b[1;0HNOTIFICATION MESSAGE:");
             std::string buffer;
-            if (option==0) buffer = getKeyboardInput(0x1780, std::string(message));
-            else buffer = getKeyboardInputLegacy(0x1780, std::string(message));
+            // if (option==0) buffer = getKeyboardInput(0x1780, std::string(message));
+            // else buffer = getKeyboardInputLegacy(0x1780, std::string(message));
+            if (option==0) buffer = getKeyboardInput(0x1780);
+            else buffer = getKeyboardInputLegacy(0x1780);
             memcpy(message, buffer.c_str(), 0x1780);
             if (buffer == "") break;
             else *menu = MENU_NEWS_ADD_IMAGE;
@@ -523,14 +522,13 @@ void menuNewsAddMessage(u8 *menu, char *message) {
 
 void menuNewsAddImage(u8 *menu, u8 *image, u32 *imgSize) {
     printInfo(MODE_SELECTION);
-    char text[] = "SELECT IMAGE SOURCE:\n  Use default.jpg\n  Select from SD card\n  Select from notification\n  Nintendo 3DS Camera\n  No image\n  Cancel";
-    u8 option = selectionMenu(text, 6);
-    consoleSelect(&top);
+    u8 option = selectionMenu("SELECT IMAGE SOURCE:\n  Use default.jpg\n  Select from SD card\n  Select from notification\n  Nintendo 3DS Camera\n  No image\n  Cancel", 6);
     switch (option) {
         case 0: case 1: {
             std::string filepath = "/NotifyMii/default.jpg";
             if (option==1) filepath = getFileName("jpg");
             if (filepath=="") break;
+            consoleSelect(&top);
             Handle imgHandle;
             Result res = FSUSER_OpenFileDirectly(&imgHandle, ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}, (FS_Path)fsMakePath(PATH_ASCII, filepath.c_str()), FS_OPEN_READ, 0);
             if (res) {
@@ -560,6 +558,7 @@ void menuNewsAddImage(u8 *menu, u8 *image, u32 *imgSize) {
         case 2: {
             u8 newsid = getNotificationID();
             if (newsid==0xFF) break;
+            consoleSelect(&top);
             NotificationHeader header;
             NEWS_GetNotificationHeader(newsid, &header);
             if (header.enableJPEG) {
@@ -595,8 +594,7 @@ void menuNewsAddImage(u8 *menu, u8 *image, u32 *imgSize) {
 
 void menuNewsAddProcess(u8 *menu, u64 *processID) {
     printInfo(MODE_SELECTION);
-    char text[] = "SELECT PROCESS ID SOURCE:\n  NotifyMii\n  Select from installed title\n  Select from notification\n  Default\n  Cancel";
-    u8 option = selectionMenu(text, 5);
+    u8 option = selectionMenu("SELECT PROCESS ID SOURCE:\n  NotifyMii\n  Select from installed title\n  Select from notification\n  Default\n  Cancel", 5);
     consoleSelect(&top);
     switch (option) {
         case 0: {
@@ -614,6 +612,7 @@ void menuNewsAddProcess(u8 *menu, u64 *processID) {
         case 2: {
             u8 newsid = getNotificationID();
             if (newsid==0xFF) break;
+            consoleSelect(&top);
             NotificationHeader header;
             Result res = NEWS_GetNotificationHeader(newsid, &header);
             *menu = MENU_NEWS_ADD;

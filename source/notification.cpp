@@ -81,8 +81,8 @@ void deleteNews(u32 id) {
     u32 total;
     NEWS_GetTotalNotifications(&total);
     u32 i = id;
-    while (i < (total-1) ) {
-        NotificationHeader header = { 0 };
+    while ( (i < (total-1)) && (i < 99) ) {
+        NotificationHeader header;
         u16 tmp[0x1780];
         u32 msgSize;
         u32 imgSize;
@@ -98,7 +98,7 @@ void deleteNews(u32 id) {
     }
     // credits: Rinnegatamante
     NotificationHeader header = { 0 };
-    NEWS_SetNotificationHeader(id, (const NotificationHeader*)&header);
+    NEWS_SetNotificationHeader(total - 1, (const NotificationHeader*)&header);
 }
 
 void clearNews() {
@@ -107,12 +107,13 @@ void clearNews() {
 	NotificationHeader header = { 0 };
     NEWS_GetTotalNotifications(&total);
     u32 i = 0;
+    printInfo(MODE_NEWS_LIST);
 	while (i < total) {
 		Result ret = NEWS_SetNotificationHeader(i, (const NotificationHeader*)&header);
         if (!ret) deleted++;
         i++;
-        printf("\x1b[27;0H%lu notifications deleted!", deleted);
+        printf("\x1b[27;0H%lu notifications deleted.", deleted);
         gfxEndFrame();
 	}
-    printInfo(MODE_NEWS_LIST);
+    // printf("\x1b[27;0H%lu notifications deleted. Done!", deleted);
 }

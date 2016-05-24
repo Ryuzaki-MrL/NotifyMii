@@ -29,8 +29,8 @@ int main(int argc, char **argv)
 
     // general stuff
     u8 menu = 0;
-    char title[32]; // change this to std::string
-    char message[0x1780]; // change this to std::string
+    char title[32];
+    char message[0x1780];
     u8* image = (u8*)malloc(0xC800);
     u32 imgSize = 0;
     u64 processID = 0;

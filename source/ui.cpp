@@ -7,15 +7,15 @@
 #include "utils.h"
 #include "ui.h"
 
-void printInfo(u8 mode, bool clear) { // TODO: update this
+void printInfo(u8 mode, bool clear) {
     consoleSelect(&top);
     if (clear) consoleClear();
     printf("\x1b[0;0H\x1b[47;30mNotifyMii v1.2                                    \x1b[0m");
     switch (mode) {
-        case MODE_NEWS_LIST: { printf("\x1b[28;0H\x1b[47;30mA: Read / Y: Dump / X: Delete / R: Image / B: Back\x1b[29;0HL: Unread / SELECT: Dump all / START: Launch app  \x1b[0m"); break; }
+        case MODE_NEWS_LIST: { printf("\x1b[28;0H\x1b[47;30mA: Read / Y: Dump / X: Delete / R: Image / B: Back\x1b[29;0HL: Mark / SELECT: Extra / START: Launch software  \x1b[0m"); break; }
         case MODE_FILE_LIST: { printf("\x1b[29;0H\x1b[47;30mD-PAD: Navigate / A: Select / Y: Preview / B: Back\x1b[0m"); break; }
-        case MODE_KEYBOARD_TOUCH: { printf("\x1b[28;0H\x1b[47;30mTOUCH: Input / B: Back / L: Backspace / R: Newline\x1b[29;0HSELECT: Legacy keyboard / START: Confirm          \x1b[0m"); break; }
-        case MODE_KEYBOARD_LEGACY: { printf("\x1b[28;0H\x1b[47;30mD-PAD: Move / A: Input / B: Back / L: Backspace   \x1b[29;0HSELECT: Touch keyboard / R: Shift / START: Confirm\x1b[0m"); break; }
+        case MODE_KEYBOARD_TOUCH: { printf("\x1b[29;0H\x1b[47;30mTOUCH: Input / START: Confirm / B: Cancel         \x1b[0m"); break; }
+        case MODE_KEYBOARD_LEGACY: { printf("\x1b[28;0H\x1b[47;30mD-PAD: Move / A: Input / B: Cancel / L: Backspace \x1b[29;0HR: Shift / START: Confirm                         \x1b[0m"); break; }
         case MODE_NONE: break;
         default: { printf("\x1b[29;0H\x1b[47;30mD-PAD: Navigate / A: Select                       \x1b[0m"); break; }
     }
@@ -88,6 +88,7 @@ void printNews(u32 selected, u32 scroll, bool info) {
         i++;
     }
     printf("\x1b[%lu;0H>", 1 + selected);
+    consoleSelect(&top);
 }
 
 void drawImage(u8 *imgBuffer, u32 imgSize) {

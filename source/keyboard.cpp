@@ -42,7 +42,7 @@ char getKeyboardChar(u8 selected, bool shift) {
     return key[selected + (shift * 48)];
 }
 
-std::string getKeyboardInput(u32 length, std::string str) { // TODO: newline support
+std::string getKeyboardInput(u32 length, std::string str) { // TODO: newline support; fix height
     gfxExit();
     gfxInitDefault();
     consoleInit(GFX_TOP, &top);
@@ -51,14 +51,14 @@ std::string getKeyboardInput(u32 length, std::string str) { // TODO: newline sup
     printInfo(MODE_KEYBOARD_TOUCH);
     while ( (aptMainLoop()) && (state != 1 || str.length() == 0 ) ) {
         hidScanInput();
-        // u32 kDown = hidKeysDown();
+        u32 kDown = hidKeysDown();
         touchPosition touch;
 		hidTouchRead(&touch);
         state = kb.HBKB_CallKeyboard(touch);
         std::string input = kb.HBKB_CheckKeyboardInput();
         if (input.length() <= length) str = input;
         if (state == 2) printf("\x1b[2;0H%s ", str.c_str());
-        else if (state == 3) break;
+        else if ((state == 3) || (kDown & KEY_START)) break;
         // if (kDown & KEY_R) input.push_back('\n');
         gfxEndFrame();
     }
@@ -68,35 +68,31 @@ std::string getKeyboardInput(u32 length, std::string str) { // TODO: newline sup
     else return "";
 }
 
-std::string getKeyboardInputLegacy(u32 length, std::string str) {
+std::string getKeyboardInputLegacy(u32 length, std::string str) { // TODO: fix height
     bool shift = false;
     u8 selected = 0;
     u32 offset = str.length();
     printInfo(MODE_KEYBOARD_LEGACY);
+    printf("\x1b[2;0H%s ", str.c_str());
     printKeyboard(selected, shift);
     while ( aptMainLoop() )
     {
         hidScanInput();
         u32 kDown = hidKeysDown();
-        if (kDown & KEY_SELECT) {
+        if (kDown & KEY_R) {
             shift=(!shift);
-            printKeyboard(selected, shift);
         }
         if (kDown & KEY_LEFT) {
             if ( (selected % 12) > 0 ) selected--;
-            printKeyboard(selected, shift);
         }
         if (kDown & KEY_RIGHT) {
             if ( (selected % 12) < 11 ) selected++;
-            printKeyboard(selected, shift);
         }
         if (kDown & KEY_UP) {
             if (selected > 11) selected-=12;
-            printKeyboard(selected, shift);
         }
         if (kDown & KEY_DOWN) {
             if (selected < 36) selected+=12;
-            printKeyboard(selected, shift);
         }
         if (kDown & KEY_A) {
             if (offset < length) {
@@ -111,6 +107,7 @@ std::string getKeyboardInputLegacy(u32 length, std::string str) {
             str.pop_back();
             printf("\x1b[2;0H%s ", str.c_str());
         }
+        if (kDown) printKeyboard(selected, shift);
         if (kDown & KEY_START) break;
         if (kDown & KEY_B) return "";
         gfxEndFrame();

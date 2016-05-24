@@ -4,6 +4,7 @@ Homebrew Notification Manager
 Features:
 - Create your own custom notifications.
   - Message: You can use a text file from the SD card as the message, or copy from another notification.
+    - Cannot exceed 6016 bytes (~5.8kb).
   - Image (optional): You can select a JPG image from the SD card, or use an image from another notification.
     - Should be exactly 400x240 and cannot exceed 50kb.
   - Process ID (optional): You can select from which app the notification was received (no app = system notification).
@@ -17,21 +18,15 @@ Features:
 - Dump or delete all notifications at once.
 - Launch the app from which the notification was received.
 
-Issues:
-- Deleting a notification that isn't the last in the list will mess up with other notifications.
-
 TODO:
 - Write a GUI.
-- Fix flickering when selecting files/titles/notifications.
+- Fix flickering when selecting files/notifications.
 - Notification editing.
-- Add flag selection to custom notifications.
 
 Credits:
 - Rinnegatamante, as some functions were stolen from Purgification and lpp-3ds.
 - Kerouz, for the app's banner and icon.
 - Smealum, for ctrulib.
-- Steveice10, for bannertool.
-- 3dsguy, for makerom.
-- dnasdw, for 3dstool.
+- Steveice10, for buildtools.
 - xerpi, for sf2dlib and sfillib.
 - jbr373, for hbkblib.
