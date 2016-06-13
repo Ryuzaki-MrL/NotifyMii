@@ -39,6 +39,7 @@ u8 getNotificationID() { // TODO: finish preview support; print correct info
     printNews(selected, scroll, true);
     while (aptMainLoop()) {
         if (total==0) {
+            printInfo(MODE_NONE, true);
             consoleSelect(&bot);
             consoleClear();
             printf("\x1b[0;0HYou don't have any notification!\nPress any key to continue.");
@@ -167,7 +168,7 @@ u64 getTitleID() {
     return titlelist[selected + scroll].id;
 }
 
-std::string getFileName(std::string filter) {
+std::string getFileName(std::string filter) { // TODO: fix filter not working with capital letters
     u32 selected = 0;
     u32 scroll = 0;
     std::string curdir = "/";
@@ -297,6 +298,7 @@ void menuNewsList(u8 *menu) { // TODO: use selection menus for actions
     {
         // return if there are no notifications
         if (total==0) {
+            printInfo(MODE_NONE, true);
             consoleSelect(&bot);
             consoleClear();
             printf("\x1b[0;0HYou don't have any notification!\nPress any key to continue.");
@@ -373,7 +375,10 @@ void menuNewsList(u8 *menu) { // TODO: use selection menus for actions
                 }
                 // printf("\x1b[27;0HDumped %lu notifications to 'SD:/NotifyMii'. Done!", i);
             }
-            else if (option==1) clearNews();
+            else if (option==1) {
+                clearNews();
+                NEWS_GetTotalNotifications(&total);
+            }
             printNews(selected, scroll, true);
         }
 

@@ -54,6 +54,9 @@ void printTitles(u32 selected, u32 scroll, u32 count, std::vector<title_entry> *
 }
 
 void printNews(u32 selected, u32 scroll, bool info) {
+    u32 total;
+    NEWS_GetTotalNotifications(&total);
+    if (total==0) return;
     NotificationHeader header;
     if (info) {
         printInfo(MODE_NEWS_LIST, true);
@@ -75,8 +78,6 @@ void printNews(u32 selected, u32 scroll, bool info) {
     consoleSelect(&bot);
     consoleClear();
     printf("\x1b[0;0HNOTIFICATION LIST");
-    u32 total;
-    NEWS_GetTotalNotifications(&total);
     u32 i = 0;
     while (i < total) {
         if (i > 28) break;
