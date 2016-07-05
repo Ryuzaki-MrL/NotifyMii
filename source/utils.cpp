@@ -26,7 +26,7 @@ std::vector<entry> getFileList(std::string directory, std::string extension) {
     return result;
 }
 
-void sortFileList(std::vector<entry> *filelist) {
+void sortFileList(std::vector<entry>* filelist) {
     struct alphabetically {
         inline bool operator() (entry a, entry b) {
             if(a.isDir == b.isDir)
@@ -60,7 +60,7 @@ void utf2ascii(char* dst, u16* src) {
 }
 
 void waitKey() {
-    while ( aptMainLoop() ) {
+    while (aptMainLoop()) {
         hidScanInput();
         u32 kDown = hidKeysDown();
         if (kDown) break;

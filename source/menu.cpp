@@ -17,7 +17,7 @@ u8 selectionMenu(std::string text, u8 entries) {
     consoleSelect(&bot);
     consoleClear();
     printf("\x1b[0;1H%s", text.c_str());
-    while ( aptMainLoop() ) {
+    while (aptMainLoop()) {
         printf("\x1b[%u;0H \n>\n ", selected);
         hidScanInput();
         u32 kDown = hidKeysDown();
@@ -98,18 +98,18 @@ u64 getTitleID() {
     std::vector<title_entry> titlelist;
     printInfo(MODE_SELECTION);
     bool getmedia = true;
-    while ( aptMainLoop() )
+    while (aptMainLoop())
     {
         if (getmedia) {
             media = (FS_MediaType)selectionMenu("SELECT SOURCE:\n  NAND\n  SD", 2);
             if (media==0xFF) return 0;
             AM_GetTitleCount(media, &count);
             if (count==0) return 0;
-            u64 *ids = new u64[count];
+            u64* ids = new u64[count];
             AM_GetTitleList(&count, media, count, ids);
             titlelist.clear();
             u32 i = 0;
-            while ( (i < count) && aptMainLoop() ) {
+            while ((i < count) && aptMainLoop()) {
                 Handle smdhHandle;
                 char shortDesc[0x40];
                 u32 archivePathData[] = {(u32)(ids[i] & 0xFFFFFFFF), (u32)(ids[i] >> 32), media, 0x00000000};
@@ -176,7 +176,7 @@ std::string getFileName(std::string filter) { // TODO: fix filter not working wi
     std::vector<entry> filelist = getFileList(curdir, filter);
     u32 count = filelist.size();
     printFiles(selected, scroll, count, &filelist, curdir);
-    while ( aptMainLoop() ) {
+    while (aptMainLoop()) {
         hidScanInput();
         u32 kDown = hidKeysDown();
         if (kDown & KEY_DOWN) {
@@ -213,6 +213,16 @@ std::string getFileName(std::string filter) { // TODO: fix filter not working wi
                     printFiles(selected, scroll, count, &filelist, curdir);
                 }
                 else break;
+            }
+            else {
+                if (curdir!="/") {
+                    curdir = innerpath.top();
+                    innerpath.pop();
+                    std::vector<entry> newlist = getFileList(curdir, filter);
+                    filelist.swap(newlist);
+                    selected = 0; scroll = 0; count = filelist.size();
+                    printFiles(selected, scroll, count, &filelist, curdir);
+                }
             }
         }
         if (kDown & KEY_B) {
@@ -281,12 +291,12 @@ std::string getFileName(std::string filter) { // TODO: fix filter not working wi
     return curdir + filelist[selected+scroll-1].name;
 }
 
-void menuMain(u8 *menu) {
+void menuMain(u8* menu) {
     printInfo(MODE_SELECTION);
-    *menu = selectionMenu("MAIN MENU\n  Create Notification\n  Notification List\n  Exit", 3) + 1;
+    *menu = selectionMenu("MAIN MENU\n  Create Notification\n  Notification List\n  Update NotifyMii\n  Exit", 4) + 1;
 }
 
-void menuNewsList(u8 *menu) { // TODO: use selection menus for actions
+void menuNewsList(u8* menu) { // TODO: use selection menus for actions
     u32 selected = 0;
     u32 scroll = 0;
     u32 total;
@@ -294,7 +304,7 @@ void menuNewsList(u8 *menu) { // TODO: use selection menus for actions
 
     printNews(selected, scroll, true);
 
-    while ( aptMainLoop() )
+    while (aptMainLoop())
     {
         // return if there are no notifications
         if (total==0) {
@@ -402,7 +412,7 @@ void menuNewsList(u8 *menu) { // TODO: use selection menus for actions
             while (header.processID > 0) {
                 u32 count;
                 AM_GetTitleCount((FS_MediaType)media, &count);
-                u64 *ids = new u64[count];
+                u64* ids = new u64[count];
                 AM_GetTitleList(&count, (FS_MediaType)media, count, ids);
                 u32 i = 0;
                 while ((ids[i] != header.processID) && (i < count)) i++;
@@ -416,14 +426,12 @@ void menuNewsList(u8 *menu) { // TODO: use selection menus for actions
                     i = 0;
                 }
                 else {
-                    u8 buf0[0x300];
-                    u8 buf1[0x20];
-                    memset(buf0, 0, 0x300);
-                    memset(buf1, 0, 0x20);
-                    aptOpenSession();
-                    APT_PrepareToDoAppJump(0, header.processID, media);
-                    APT_DoAppJump(0x300, 0x20, buf0, buf1);
-                    aptCloseSession();
+                    u8 param[0x300];
+                    u8 hmac[0x20];
+                    memset(param, 0, sizeof(param));
+                    memset(hmac, 0, sizeof(hmac));
+                    APT_PrepareToDoApplicationJump(0, header.processID, media);
+                    APT_DoApplicationJump(param, sizeof(param), hmac);
                     break;
                 }
             }
@@ -439,42 +447,27 @@ void menuNewsList(u8 *menu) { // TODO: use selection menus for actions
     }
 }
 
-void menuNewsAddTitle(u8 *menu, char *title) {
-    printInfo(MODE_SELECTION);
-    u8 option = selectionMenu("SELECT INPUT METHOD:\n  Touch keyboard\n  Legacy keyboard\n  Cancel", 3);
-    consoleSelect(&top);
-    if (option < 2) {
-        printf("\x1b[1;0HNOTIFICATION TITLE:");
-        std::string buffer;
-        // if (option==0) buffer = getKeyboardInput(32, std::string(title));
-        // else buffer = getKeyboardInputLegacy(32, std::string(title));
-        if (option==0) buffer = getKeyboardInput(32);
-        else buffer = getKeyboardInputLegacy(32);
-        memcpy(title, buffer.c_str(), 32);
-        if (buffer == "") return;
-        else *menu = MENU_NEWS_ADD_MESSAGE;
-    }
+void menuUpdate(u8* menu) {
+    printf("\x1b[1;0HNot implemented yet.\nPress any key to continue.");
+    waitKey();
+    *menu = MENU_MAIN;
+}
+
+void menuNewsAddTitle(u8* menu, char* title) {
+    if (getKeyboardInput(title, 32, "Notification Title", false)) *menu = MENU_NEWS_ADD_MESSAGE;
     else *menu = MENU_MAIN;
 }
 
-void menuNewsAddMessage(u8 *menu, char *message) {
+void menuNewsAddMessage(u8* menu, char* message) {
     printInfo(MODE_SELECTION);
-    u8 option = selectionMenu("SELECT MESSAGE SOURCE:\n  Type a message (Touch keyboard)\n  Type a message (Legacy keyboard)\n  Use a text file\n  Use a notification\n  Cancel", 5);
+    u8 option = selectionMenu("SELECT MESSAGE SOURCE:\n  Type a message\n  Use a text file\n  Use a notification\n  Cancel", 4);
     consoleSelect(&top);
     switch (option) {
-        case 0: case 1: {
-            printf("\x1b[1;0HNOTIFICATION MESSAGE:");
-            std::string buffer;
-            // if (option==0) buffer = getKeyboardInput(0x1780, std::string(message));
-            // else buffer = getKeyboardInputLegacy(0x1780, std::string(message));
-            if (option==0) buffer = getKeyboardInput(0x1780);
-            else buffer = getKeyboardInputLegacy(0x1780);
-            memcpy(message, buffer.c_str(), 0x1780);
-            if (buffer == "") break;
-            else *menu = MENU_NEWS_ADD_IMAGE;
+        case 0: {
+            if (getKeyboardInput(message, 0x1780, "Notification Message", true)) *menu = MENU_NEWS_ADD_IMAGE;
             break;
         }
-        case 2: {
+        case 1: {
             std::string filepath = getFileName("txt");
             if (filepath=="") break;
             u32 bytes;
@@ -505,7 +498,7 @@ void menuNewsAddMessage(u8 *menu, char *message) {
             svcCloseHandle(fileHandle);
             break;
         }
-        case 3: {
+        case 2: {
             u8 newsid = getNotificationID();
             if (newsid==0xFF) break;
             u16 buffer[0x1780];
@@ -519,21 +512,21 @@ void menuNewsAddMessage(u8 *menu, char *message) {
             break;
         }
         default: {
-            *menu = MENU_NEWS_ADD_TITLE;
+            *menu = MENU_MAIN;
             break;
         }
     }
 }
 
-void menuNewsAddImage(u8 *menu, u8 *image, u32 *imgSize) {
+void menuNewsAddImage(u8* menu, u8* image, u32* imgSize) {
     printInfo(MODE_SELECTION);
     u8 option = selectionMenu("SELECT IMAGE SOURCE:\n  Use default.jpg\n  Select from SD card\n  Select from notification\n  Nintendo 3DS Camera\n  No image\n  Cancel", 6);
+    consoleSelect(&top);
     switch (option) {
         case 0: case 1: {
             std::string filepath = "/NotifyMii/default.jpg";
             if (option==1) filepath = getFileName("jpg");
             if (filepath=="") break;
-            consoleSelect(&top);
             Handle imgHandle;
             Result res = FSUSER_OpenFileDirectly(&imgHandle, ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}, (FS_Path)fsMakePath(PATH_ASCII, filepath.c_str()), FS_OPEN_READ, 0);
             if (res) {
@@ -563,7 +556,6 @@ void menuNewsAddImage(u8 *menu, u8 *image, u32 *imgSize) {
         case 2: {
             u8 newsid = getNotificationID();
             if (newsid==0xFF) break;
-            consoleSelect(&top);
             NotificationHeader header;
             NEWS_GetNotificationHeader(newsid, &header);
             if (header.enableJPEG) {
@@ -597,7 +589,7 @@ void menuNewsAddImage(u8 *menu, u8 *image, u32 *imgSize) {
     }
 }
 
-void menuNewsAddProcess(u8 *menu, u64 *processID) {
+void menuNewsAddProcess(u8* menu, u64* processID) {
     printInfo(MODE_SELECTION);
     u8 option = selectionMenu("SELECT PROCESS ID SOURCE:\n  NotifyMii\n  Select from installed title\n  Select from notification\n  Default\n  Cancel", 5);
     consoleSelect(&top);
@@ -641,7 +633,7 @@ void menuNewsAddProcess(u8 *menu, u64 *processID) {
     }
 }
 
-void menuAddNews(u8 *menu, char *title_c, char *message_c, u8 *image, u32 imgSize, u64 processID, news_flags flags) {
+void menuAddNews(u8* menu, char* title_c, char* message_c, u8* image, u32 imgSize, u64 processID, news_flags flags) {
     u32 total;
     NEWS_GetTotalNotifications(&total);
     u32 titleSize = strlen(title_c);
@@ -660,7 +652,7 @@ void menuAddNews(u8 *menu, char *title_c, char *message_c, u8 *image, u32 imgSiz
     free(title);
     free(message);
     consoleSelect(&top);
-    if (res) printf("\x1b[1;0HFailed! Press any key to continue.");
+    if (res) printf("\x1b[1;0HFailed to create notification.\nPress any key to continue.");
     else {
         NotificationHeader header;
         NEWS_GetNotificationHeader(total, &header);

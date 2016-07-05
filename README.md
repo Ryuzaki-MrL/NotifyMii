@@ -3,7 +3,7 @@ Homebrew Notification Manager
 
 Features:
 - Create your own custom notifications.
-  - Message: You can use a text file from the SD card as the message, or copy from another notification.
+  - Message: You can manually type a message, use a text file from the SD card as the message, or copy from another notification.
     - Cannot exceed 6016 bytes (~5.8kb).
   - Image (optional): You can select a JPG image from the SD card, or use an image from another notification.
     - Should be exactly 400x240 and cannot exceed 50kb.
@@ -20,13 +20,11 @@ Features:
 
 TODO:
 - Write a GUI.
-- Fix flickering when selecting files/notifications.
 - Notification editing.
 
 Credits:
-- Rinnegatamante, as some functions were stolen from Purgification and lpp-3ds.
+- Rinnegatamante, for the notification dumping code from Purgification and utf<->ascii functions from lpp-3ds.
 - Kerouz, for the app's banner and icon.
-- Smealum, for ctrulib.
+- Smealum and many others, for ctrulib.
 - Steveice10, for buildtools.
 - xerpi, for sf2dlib and sfillib.
-- jbr373, for hbkblib.

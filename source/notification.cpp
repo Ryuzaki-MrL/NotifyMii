@@ -8,18 +8,12 @@
 #include "ui.h"
 #include "menu.h"
 
-/*
-void addNews(char *title_c, char *message_c, u8 *image, u32 imgSize, u64 processID, news_flags flags = { 1, 0, 0 }) {
-    // STUBBED
-}
-*/
-
 void readNews(u32 id) {
     consoleSelect(&top);
     consoleClear();
     NotificationHeader header;
     NEWS_GetNotificationHeader(id, &header);
-    header.unread=false;
+    header.unread = false;
     NEWS_SetNotificationHeader(id, (const NotificationHeader*)&header);
     u16 tmp[0x1780];
     NEWS_GetNotificationMessage(id, tmp, NULL);
@@ -42,10 +36,10 @@ void dumpNews (u32 id) {
     u8 hours = time / 3600;
     u8 minutes = (time % 3600) / 60;
     u8 seconds = time % 60;
-    char filename[64];
-    char filename2[64];
-    sprintf(filename, "/NotifyMii/%02u%02u%02u_%s.txt", hours, minutes, seconds, title);
-    sprintf(filename2,"/NotifyMii/%02u%02u%02u_%s.jpg", hours, minutes, seconds, title);
+    char fname_msg[64];
+    char fname_img[64];
+    sprintf(fname_msg, "/NotifyMii/%02u%02u%02u_%s.txt", hours, minutes, seconds, title);
+    sprintf(fname_img, "/NotifyMii/%02u%02u%02u_%s.jpg", hours, minutes, seconds, title);
 
     // getting message
     u16 tmp[0x1780];
@@ -56,7 +50,7 @@ void dumpNews (u32 id) {
     // writing message to file
     u32 bytes;
     Handle fileHandle;
-    FSUSER_OpenFileDirectly(&fileHandle, ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}, (FS_Path)fsMakePath(PATH_ASCII, filename), FS_OPEN_WRITE | FS_OPEN_CREATE, 0);
+    FSUSER_OpenFileDirectly(&fileHandle, ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}, (FS_Path)fsMakePath(PATH_ASCII, fname_msg), FS_OPEN_WRITE | FS_OPEN_CREATE, 0);
     FSFILE_Write(fileHandle, &bytes, 0, message, strlen(message), 0);
     FSFILE_Close(fileHandle);
     svcCloseHandle(fileHandle);
@@ -65,10 +59,10 @@ void dumpNews (u32 id) {
     if (header.enableJPEG) {
         u32 size;
         Handle fileHandle2;
-        u8* buffer = (u8*)malloc(0x10000);
+        u8* buffer = (u8*)malloc(0xC800);
         Result ret = NEWS_GetNotificationImage(id, buffer, &size);
         if (!ret) {
-            FSUSER_OpenFileDirectly(&fileHandle2, ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}, (FS_Path)fsMakePath(PATH_ASCII, filename2), FS_OPEN_WRITE | FS_OPEN_CREATE, 0);
+            FSUSER_OpenFileDirectly(&fileHandle2, ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}, (FS_Path)fsMakePath(PATH_ASCII, fname_img), FS_OPEN_WRITE | FS_OPEN_CREATE, 0);
             FSFILE_Write(fileHandle2, &bytes, 0, buffer, size, 0);
             FSFILE_Close(fileHandle2);
         }
@@ -81,12 +75,12 @@ void deleteNews(u32 id) {
     u32 total;
     NEWS_GetTotalNotifications(&total);
     u32 i = id;
-    while ( (i < (total-1)) && (i < 99) ) {
+    while ((i < (total-1)) && (i < 99)) {
         NotificationHeader header;
         u16 tmp[0x1780];
         u32 msgSize;
         u32 imgSize;
-        u8* img = (u8*)malloc(0x10000);
+        u8* img = (u8*)malloc(0xC800);
         NEWS_GetNotificationHeader(i + 1, &header);
         NEWS_GetNotificationMessage(i + 1, tmp, &msgSize);
         NEWS_GetNotificationImage(i + 1, img, &imgSize);
@@ -115,5 +109,4 @@ void clearNews() {
         printf("\x1b[27;0H%lu notifications deleted.", deleted);
         gfxEndFrame();
 	}
-    // printf("\x1b[27;0H%lu notifications deleted. Done!", deleted);
 }

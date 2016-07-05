@@ -43,7 +43,7 @@ typedef struct {
 } SMDH;
 
 std::vector<entry> getFileList(std::string directory, std::string extension);
-void sortFileList(std::vector<entry> *filelist);
+void sortFileList(std::vector<entry>* filelist);
 bool isDirectory(std::string path);
 void ascii2utf(u16* dst, char* src);
 void utf2ascii(char* dst, u16* src);

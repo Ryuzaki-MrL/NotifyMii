@@ -11,7 +11,7 @@
 PrintConsole top;
 PrintConsole bot;
 
-int main(int argc, char **argv)
+int main(int argc, char** argv)
 {
     newsInit();
     aptInit();
@@ -35,7 +35,7 @@ int main(int argc, char **argv)
     u32 imgSize = 0;
     u64 processID = 0;
 
-    while ( aptMainLoop() )
+    while (aptMainLoop())
     {
         consoleSelect(&bot);
         consoleClear();
@@ -44,6 +44,7 @@ int main(int argc, char **argv)
             case MENU_MAIN: { menuMain(&menu); break; }
             case MENU_NEWS_ADD_TITLE: { menuNewsAddTitle(&menu, title); break; }
             case MENU_NEWS_LIST: { menuNewsList(&menu); break; }
+            case MENU_UPDATE: { menuUpdate(&menu); break; }
             case MENU_NEWS_ADD_MESSAGE: { menuNewsAddMessage(&menu, message); break; }
             case MENU_NEWS_ADD_IMAGE: { menuNewsAddImage(&menu, image, &imgSize); break; }
             case MENU_NEWS_ADD_PROCESS: { menuNewsAddProcess(&menu, &processID); break; }

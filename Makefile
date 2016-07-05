@@ -38,7 +38,7 @@ endif
 
 ifeq ($(TARGET),3DS)
     LIBRARY_DIRS += $(DEVKITPRO)/libctru $(DEVKITPRO)/portlibs/armv6k
-    LIBRARIES += sfil freetype z png jpeg sf2d hbkb ctru m
+    LIBRARIES += sfil freetype z png jpeg sf2d ctru m
 
     PRODUCT_CODE := CTR-HB-NEWS
     UNIQUE_ID := 0xED990

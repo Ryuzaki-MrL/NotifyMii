@@ -8,7 +8,7 @@
 #include "notification.h"
 #include "utils.h"
 #include "ui.h"
-
+/*
 void printKeyboard(u8 selected, bool shift) {
     consoleSelect(&bot);
     consoleClear();
@@ -41,34 +41,23 @@ char getKeyboardChar(u8 selected, bool shift) {
     };
     return key[selected + (shift * 48)];
 }
-
-std::string getKeyboardInput(u32 length, std::string str) { // TODO: newline support; fix height
-    gfxExit();
-    gfxInitDefault();
-    consoleInit(GFX_TOP, &top);
-    HB_Keyboard kb;
-    u8 state = 4;
-    printInfo(MODE_KEYBOARD_TOUCH);
-    while ( (aptMainLoop()) && (state != 1 || str.length() == 0 ) ) {
-        hidScanInput();
-        u32 kDown = hidKeysDown();
-        touchPosition touch;
-		hidTouchRead(&touch);
-        state = kb.HBKB_CallKeyboard(touch);
-        std::string input = kb.HBKB_CheckKeyboardInput();
-        if (input.length() <= length) str = input;
-        if (state == 2) printf("\x1b[2;0H%s ", str.c_str());
-        else if ((state == 3) || (kDown & KEY_START)) break;
-        // if (kDown & KEY_R) input.push_back('\n');
-        gfxEndFrame();
-    }
-    flushKeyboard();
-    consoleInit(GFX_BOTTOM, &bot);
-    if (state == 1) return str;
-    else return "";
+*/
+bool getKeyboardInput(char* buffer, size_t bufsize, std::string htext, bool multiline) {
+    SwkbdState kb;
+    swkbdInit(&kb, SWKBD_TYPE_NORMAL, 2, -1);
+    swkbdSetInitialText(&kb, buffer);
+    swkbdSetHintText(&kb, htext.c_str());
+    swkbdSetButton(&kb, SWKBD_BUTTON_LEFT, "Cancel", false);
+    swkbdSetButton(&kb, SWKBD_BUTTON_RIGHT, "Confirm", true);
+    if (multiline) swkbdSetFeatures(&kb, SWKBD_DARKEN_TOP_SCREEN | SWKBD_MULTILINE);
+    swkbdSetValidation(&kb, SWKBD_NOTEMPTY_NOTBLANK, 0, 0);
+    swkbdInputText(&kb, buffer, bufsize);
+    SwkbdResult result = swkbdGetResult(&kb);
+    if (result==SWKBD_D1_CLICK1) return true;
+    else return false;
 }
-
-std::string getKeyboardInputLegacy(u32 length, std::string str) { // TODO: fix height
+/*
+std::string getKeyboardInputLegacy(u32 length, std::string str) {
     bool shift = false;
     u8 selected = 0;
     u32 offset = str.length();
@@ -115,11 +104,4 @@ std::string getKeyboardInputLegacy(u32 length, std::string str) { // TODO: fix h
     if (aptMainLoop()) return str;
     else return "";
 }
-
-void flushKeyboard() {
-    u8 *buffer;
-    u16 width, height;
-    buffer = gfxGetFramebuffer(GFX_BOTTOM, GFX_LEFT, &width, &height);
-    memset(buffer, 0, (width * height * 3));
-    gfxEndFrame();
-}
+*/

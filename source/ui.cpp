@@ -21,25 +21,36 @@ void printInfo(u8 mode, bool clear) {
     }
 }
 
-void printFiles(u32 selected, u32 scroll, u32 count, std::vector<entry> *files, std::string curdir) {
+void printFiles(u32 selected, u32 scroll, u32 count, std::vector<entry>* files, std::string curdir) {
     printInfo(MODE_FILE_LIST);
     consoleSelect(&bot);
-    consoleClear();
-    bool isRoot = (curdir=="/");
-    printf("\x1b[0;0H%.40s", curdir.c_str());
-    printf("\x1b[%lu;0H>", 1 + selected);
+    bool isroot = (curdir=="/");
+    if (curdir.size() <= 40) printf("\x1b[0;0H%-40s", curdir.c_str());
+    else printf("\x1b[0;0H%.37s...", curdir.c_str());
     u32 i = 0;
     while (i < count) {
         if (i > 27) break;
-        if ( (*files)[i+scroll].isDir ) printf("\x1b[%lu;2H\x1b[33m%.38s\x1b[0m", 2 + i, (*files)[i+scroll].name.c_str());
-        else printf("\x1b[%lu;2H%.38s", 2 + i, (*files)[i+scroll].name.c_str());
+        u32 len = (*files)[i+scroll].name.size();
+        if (len > 38) {
+            if ((*files)[i+scroll].isDir) printf("\x1b[%lu;0H\x1b[33m  %.35s...\x1b[0m", 2 + i, (*files)[i+scroll].name.c_str());
+            else printf("\x1b[%lu;0H  %.35s...", 2 + i, (*files)[i+scroll].name.c_str());
+        }
+        else {
+            if ((*files)[i+scroll].isDir) printf("\x1b[%lu;0H\x1b[33m  %-38s\x1b[0m", 2 + i, (*files)[i+scroll].name.c_str());
+            else printf("\x1b[%lu;0H  %-38s", 2 + i, (*files)[i+scroll].name.c_str());
+        }
         i++;
     }
-    if (isRoot) printf("\x1b[1;2H\x1b[35m[root]\x1b[0m");
-    else printf("\x1b[1;2H\x1b[37m..\x1b[0m");
+    while (i < 28) {
+        printf("\x1b[%lu;0H  %-38c", 2 + i, ' ');
+        i++;
+    }
+    if (isroot) printf("\x1b[1;0H\x1b[35m  %-38s\x1b[0m", "[root]");
+    else printf("\x1b[1;0H\x1b[37m  %-38s\x1b[0m", "..");
+    printf("\x1b[%lu;0H>", 1 + selected);
 }
 
-void printTitles(u32 selected, u32 scroll, u32 count, std::vector<title_entry> *titles, FS_MediaType media) {
+void printTitles(u32 selected, u32 scroll, u32 count, std::vector<title_entry>* titles, FS_MediaType media) {
     consoleSelect(&bot);
     consoleClear();
     if (media==MEDIATYPE_SD) printf("\x1b[0;0H/SD");
@@ -47,7 +58,7 @@ void printTitles(u32 selected, u32 scroll, u32 count, std::vector<title_entry> *
     u32 i = 0;
     while (i < count) {
         if (i > 28) break;
-        printf("\x1b[%lu;2H%.22s\x1b[%lu;25H%#llx", 1 + i, (*titles)[i+scroll].name.c_str(), 1 + i, (*titles)[i+scroll].id);
+        printf("\x1b[%lu;0H  %.22s\x1b[%lu;25H%#llx", 1 + i, (*titles)[i+scroll].name.c_str(), 1 + i, (*titles)[i+scroll].id);
         i++;
     }
     printf("\x1b[%lu;0H>", 1 + selected);
@@ -76,7 +87,6 @@ void printNews(u32 selected, u32 scroll, bool info) {
         if (header.isOptedOut) printf("\x1b[31m  Opted out\n\x1b[0m");
     }
     consoleSelect(&bot);
-    consoleClear();
     printf("\x1b[0;0HNOTIFICATION LIST");
     u32 i = 0;
     while (i < total) {
@@ -84,20 +94,20 @@ void printNews(u32 selected, u32 scroll, bool info) {
         NEWS_GetNotificationHeader(i + scroll, &header);
         char title[32];
         utf2ascii(title, header.title);
-        if (header.unread) printf("\x1b[%lu;0H\x1b[33m  %.44s [!]\x1b[0m", 1 + i, title);
-        else printf("\x1b[%lu;0H  %.48s", 1 + i, title);
+        if (header.unread) printf("\x1b[%lu;0H\x1b[33m  %-32s [!]\x1b[0m", 1 + i, title);
+        else printf("\x1b[%lu;0H  %-38s", 1 + i, title);
         i++;
     }
     printf("\x1b[%lu;0H>", 1 + selected);
     consoleSelect(&top);
 }
 
-void drawImage(u8 *imgBuffer, u32 imgSize) {
+void drawImage(u8* imgBuffer, u32 imgSize) {
     gfxExit();
     sf2d_init();
     sf2d_set_3D(0);
-    sf2d_texture *image = sfil_load_JPEG_buffer(imgBuffer, imgSize, SF2D_PLACE_RAM);
-    while ( aptMainLoop() ) {
+    sf2d_texture* image = sfil_load_JPEG_buffer(imgBuffer, imgSize, SF2D_PLACE_RAM);
+    while (aptMainLoop()) {
         hidScanInput();
         u32 kDown = hidKeysDown();
         if (kDown) break;
@@ -121,7 +131,7 @@ bool promptConfirm(std::string strg) {
     printf("\x1b[14;%uH%s", (25 - (strg.size() / 2)), strg.c_str());
     printf("\x1b[16;14HA: Confirm / B: Cancel");
     u32 kDown = 0;
-    while ( aptMainLoop() ) {
+    while (aptMainLoop()) {
         hidScanInput();
         kDown = hidKeysDown();
         if (kDown) break;
@@ -130,19 +140,19 @@ bool promptConfirm(std::string strg) {
     if (kDown & KEY_A) return true;
     else return false;
 }
-
+/*
 void promptAlert(std::string strg) {
     consoleSelect(&top);
     consoleClear();
     printf("\x1b[14;%uH%s", (25 - (strg.size() / 2)), strg.c_str());
-    while ( aptMainLoop() ) {
+    while (aptMainLoop()) {
         hidScanInput();
         u32 kDown = hidKeysDown();
         if (kDown) break;
         gfxEndFrame();
     }
 }
-
+*/
 void gfxEndFrame() {
     gfxFlushBuffers();
     gfxSwapBuffers();
