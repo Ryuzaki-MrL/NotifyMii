@@ -30,7 +30,7 @@ RUN_FLAGS :=
 
 ifeq ($(TARGET),$(filter $(TARGET),3DS WIIU))
     TITLE := $(NAME)
-    DESCRIPTION := NotifyMii
+    DESCRIPTION := $(NAME)
     AUTHOR := Ryuzaki_MrL
 endif
 
