@@ -38,8 +38,8 @@ typedef struct {
     u32 optimalBannerFrame;
     u32 streetpassId;
     u64 reserved2;
-    u8 smallIcon[0x480];
-    u8 largeIcon[0x1200];
+    u16 smallIcon[0x240];
+    u16 largeIcon[0x900];
 } SMDH;
 
 std::vector<entry> getFileList(std::string directory, std::string extension);
@@ -47,6 +47,7 @@ void sortFileList(std::vector<entry>* filelist);
 bool isDirectory(std::string path);
 void ascii2utf(u16* dst, char* src);
 void utf2ascii(char* dst, u16* src);
+std::string validateFileName(std::string fname);
 void waitKey();
 
 #endif /* UTILS_H */

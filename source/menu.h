@@ -1,6 +1,8 @@
 #ifndef MENU_H
 #define MENU_H
 
+#include "notification.h"
+
 enum {
     MENU_MAIN,
     MENU_NEWS_ADD_TITLE,

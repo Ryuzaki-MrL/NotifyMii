@@ -4,7 +4,6 @@
 #include <3ds.h>
 
 #include "utils.h"
-#include "notification.h"
 #include "menu.h"
 #include "ui.h"
 
@@ -14,7 +13,6 @@ PrintConsole bot;
 int main(int argc, char** argv)
 {
     newsInit();
-    aptInit();
     fsInit();
     amInit();
     cfguInit();
@@ -63,7 +61,6 @@ int main(int argc, char** argv)
     cfguExit();
     amExit();
     fsExit();
-    aptExit();
     newsExit();
     return 0;
 }

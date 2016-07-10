@@ -6,7 +6,6 @@
 #include "utils.h"
 #include "notification.h"
 #include "ui.h"
-#include "menu.h"
 
 void readNews(u32 id) {
     consoleSelect(&top);
@@ -36,10 +35,11 @@ void dumpNews (u32 id) {
     u8 hours = time / 3600;
     u8 minutes = (time % 3600) / 60;
     u8 seconds = time % 60;
+    std::string titlef = validateFileName(std::string(title));
     char fname_msg[64];
     char fname_img[64];
-    sprintf(fname_msg, "/NotifyMii/%02u%02u%02u_%s.txt", hours, minutes, seconds, title);
-    sprintf(fname_img, "/NotifyMii/%02u%02u%02u_%s.jpg", hours, minutes, seconds, title);
+    sprintf(fname_msg, "/NotifyMii/%02u%02u%02u_%s.txt", hours, minutes, seconds, titlef.c_str());
+    sprintf(fname_img, "/NotifyMii/%02u%02u%02u_%s.jpg", hours, minutes, seconds, titlef.c_str());
 
     // getting message
     u16 tmp[0x1780];
@@ -63,7 +63,7 @@ void dumpNews (u32 id) {
         Result ret = NEWS_GetNotificationImage(id, buffer, &size);
         if (!ret) {
             FSUSER_OpenFileDirectly(&fileHandle2, ARCHIVE_SDMC, (FS_Path){PATH_EMPTY, 1, (u8*)""}, (FS_Path)fsMakePath(PATH_ASCII, fname_img), FS_OPEN_WRITE | FS_OPEN_CREATE, 0);
-            FSFILE_Write(fileHandle2, &bytes, 0, buffer, size, 0);
+            FSFILE_Write(fileHandle2, &bytes, 0, buffer, (size > 0xC800) ? 0xC800 : size, 0);
             FSFILE_Close(fileHandle2);
         }
         svcCloseHandle(fileHandle2);
@@ -86,7 +86,7 @@ void deleteNews(u32 id) {
         NEWS_GetNotificationImage(i + 1, img, &imgSize);
         NEWS_SetNotificationHeader(i, (const NotificationHeader*)&header);
         NEWS_SetNotificationMessage(i, (const u16*)tmp, msgSize);
-        NEWS_SetNotificationImage(i, (const u8*)img, imgSize);
+        NEWS_SetNotificationImage(i, (const u8*)img, (imgSize > 0xC800) ? 0xC800 : imgSize);
         free(img);
         i++;
     }

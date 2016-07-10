@@ -18,7 +18,6 @@ void printFiles(u32 selected, u32 scroll, u32 count, std::vector<entry>* files, 
 void printTitles(u32 selected, u32 scroll, u32 count, std::vector<title_entry>* titles, FS_MediaType media);
 void printNews(u32 selected, u32 scroll, bool info = false);
 void drawImage(u8* image, u32 imgSize);
-// void promptAlert(std::string strg);
 void gfxEndFrame();
 
 #endif /* UI_H */

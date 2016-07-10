@@ -2,11 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stack>
-#include <vector>
 #include <3ds.h>
 
 #include "utils.h"
-#include "notification.h"
 #include "menu.h"
 #include "ui.h"
 #include "keyboard.h"
@@ -21,8 +19,8 @@ u8 selectionMenu(std::string text, u8 entries) {
         printf("\x1b[%u;0H \n>\n ", selected);
         hidScanInput();
         u32 kDown = hidKeysDown();
-        if ( (kDown & KEY_DOWN) && (selected < entries-1) ) selected++;
-        if ( (kDown & KEY_UP) && (selected > 0) ) selected--;
+        if ((kDown & KEY_DOWN) && (selected < entries-1)) selected++;
+        if ((kDown & KEY_UP) && (selected > 0)) selected--;
         if (kDown & KEY_A) break;
         if (kDown & KEY_B) return 0xFF;
         gfxEndFrame();
@@ -50,12 +48,12 @@ u8 getNotificationID() { // TODO: finish preview support; print correct info
         u32 kDown = hidKeysDown();
         if (kDown & KEY_DOWN) {
             if (total < 29) {
-                if (selected < ( total - 1) ) selected++;
+                if (selected < (total - 1)) selected++;
                 else selected=0;
             }
             else if (total > 0) {
                 if (selected<14) selected++;
-                else if ( (selected + scroll) < (total - 15) ) scroll++;
+                else if ((selected + scroll) < (total - 15)) scroll++;
                 else if (selected<28) selected++;
                 else { selected = 0; scroll = 0; }
             }
@@ -78,9 +76,9 @@ u8 getNotificationID() { // TODO: finish preview support; print correct info
             NotificationHeader header;
             NEWS_GetNotificationHeader(selected + scroll, &header);
             if (header.enableJPEG) {
-                u8* buffer = (u8*)malloc(0x10000);
+                u8* buffer = (u8*)malloc(0xC800);
                 NEWS_GetNotificationImage(selected + scroll, buffer, &size);
-                drawImage(buffer, size);
+                drawImage(buffer, (size > 0xC800) ? 0xC800 : size);
                 free(buffer);
                 printNews(selected, scroll, true);
             }
@@ -140,12 +138,12 @@ u64 getTitleID() {
         u32 kDown = hidKeysDown();
         if (kDown & KEY_DOWN) {
             if (count < 29) {
-            if (selected < ( count - 1) ) selected++;
+            if (selected < (count - 1)) selected++;
             else selected=0;
             }
             else if (count > 0) {
                 if (selected<14) selected++;
-                else if ( (selected + scroll) < (count - 15) ) scroll++;
+                else if ((selected + scroll) < (count - 15)) scroll++;
                 else if (selected<28) selected++;
                 else { selected = 0; scroll = 0; }
             }
@@ -186,7 +184,7 @@ std::string getFileName(std::string filter) { // TODO: fix filter not working wi
             }
             else if (count > 0) {
                 if (selected<14) selected++;
-                else if ( (selected + scroll) < (count - 14) ) scroll++;
+                else if ((selected + scroll) < (count - 14)) scroll++;
                 else if (selected<28) selected++;
                 else { selected = 0; scroll = 0; }
             }
@@ -249,7 +247,7 @@ std::string getFileName(std::string filter) { // TODO: fix filter not working wi
                 if (filter=="jpg") {
                     u64 size;
                     FSFILE_GetSize(fileHandle, &size);
-                    if ( (size > 0xC800) ) {
+                    if ((size > 0xC800)) {
                         printf("\x1b[1;0HImage file is too large.\nPress any key to continue.");
                         waitKey();
                     }
@@ -323,12 +321,12 @@ void menuNewsList(u8* menu) { // TODO: use selection menus for actions
         // move cursor
         if (kDown & KEY_DOWN) {
             if (total < 29) {
-                if (selected < ( total - 1) ) selected++;
+                if (selected < (total - 1)) selected++;
                 else selected=0;
             }
             else if (total > 0) {
                 if (selected<14) selected++;
-                else if ( (selected + scroll) < (total - 15) ) scroll++;
+                else if ((selected + scroll) < (total - 15)) scroll++;
                 else if (selected<28) selected++;
                 else { selected = 0; scroll = 0; }
             }
@@ -357,9 +355,9 @@ void menuNewsList(u8* menu) { // TODO: use selection menus for actions
             NotificationHeader header;
             NEWS_GetNotificationHeader(selected + scroll, &header);
             if (header.enableJPEG) {
-                u8* buffer = (u8*)malloc(0x10000);
+                u8* buffer = (u8*)malloc(0xC800);
                 NEWS_GetNotificationImage(selected + scroll, buffer, &size);
-                drawImage(buffer, size);
+                drawImage(buffer, (size > 0xC800) ? 0xC800 : size);
                 free(buffer);
                 printNews(selected, scroll, true);
             }

@@ -10,7 +10,7 @@
 void printInfo(u8 mode, bool clear) {
     consoleSelect(&top);
     if (clear) consoleClear();
-    printf("\x1b[0;0H\x1b[47;30mNotifyMii v1.2                                    \x1b[0m");
+    printf("\x1b[0;0H\x1b[47;30m%-50s\x1b[0m", "NotifyMii v1.2.1");
     switch (mode) {
         case MODE_NEWS_LIST: { printf("\x1b[28;0H\x1b[47;30mA: Read / Y: Dump / X: Delete / R: Image / B: Back\x1b[29;0HL: Mark / SELECT: Extra / START: Launch software  \x1b[0m"); break; }
         case MODE_FILE_LIST: { printf("\x1b[29;0H\x1b[47;30mD-PAD: Navigate / A: Select / Y: Preview / B: Back\x1b[0m"); break; }
@@ -140,19 +140,7 @@ bool promptConfirm(std::string strg) {
     if (kDown & KEY_A) return true;
     else return false;
 }
-/*
-void promptAlert(std::string strg) {
-    consoleSelect(&top);
-    consoleClear();
-    printf("\x1b[14;%uH%s", (25 - (strg.size() / 2)), strg.c_str());
-    while (aptMainLoop()) {
-        hidScanInput();
-        u32 kDown = hidKeysDown();
-        if (kDown) break;
-        gfxEndFrame();
-    }
-}
-*/
+
 void gfxEndFrame() {
     gfxFlushBuffers();
     gfxSwapBuffers();

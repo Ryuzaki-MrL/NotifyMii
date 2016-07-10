@@ -18,7 +18,7 @@ std::vector<entry> getFileList(std::string directory, std::string extension) {
             std::string file(ent->d_name);
             bool isDir = isDirectory(directory + file + "/");
             std::string::size_type dotPos = file.rfind('.');
-            if( (extension == file.substr(dotPos+1)) || ( isDir ) || (extension == "") ) result.push_back({file, isDir});
+            if((extension == file.substr(dotPos+1)) || ( isDir ) || (extension == "")) result.push_back({file, isDir});
         }
     } while(ent != NULL);
     closedir(dir);
@@ -57,6 +57,18 @@ void utf2ascii(char* dst, u16* src) {
     if (!src || !dst) return;
     while(*src) *(dst++)=(*(src++))&0xFF;
     *dst=0x00;
+}
+
+std::string validateFileName(std::string fname) {
+    fname.erase(std::remove(fname.begin(), fname.end(), ':'), fname.end());
+    fname.erase(std::remove(fname.begin(), fname.end(), '?'), fname.end());
+    fname.erase(std::remove(fname.begin(), fname.end(), '/'), fname.end());
+    fname.erase(std::remove(fname.begin(), fname.end(), '\\'), fname.end());
+    fname.erase(std::remove(fname.begin(), fname.end(), '*'), fname.end());
+    fname.erase(std::remove(fname.begin(), fname.end(), '<'), fname.end());
+    fname.erase(std::remove(fname.begin(), fname.end(), '>'), fname.end());
+    fname.erase(std::remove(fname.begin(), fname.end(), '|'), fname.end());
+    return fname;
 }
 
 void waitKey() {
