@@ -45,14 +45,14 @@ bool isDirectory(std::string path) {
     return result;
 }
 
-// credits: Rinnegatamante
+// https://github.com/Rinnegatamante/lpp-3ds/blob/master/source/include/utils.cpp#L76-L80
 void ascii2utf(u16* dst, char* src) {
     if (!src || !dst) return;
     while(*src) *(dst++)=(*src++);
     *dst=0x00;
 }
 
-// credits: Rinnegatamante
+// https://github.com/Rinnegatamante/lpp-3ds/blob/master/source/include/utils.cpp#L70-L74
 void utf2ascii(char* dst, u16* src) {
     if (!src || !dst) return;
     while(*src) *(dst++)=(*(src++))&0xFF;

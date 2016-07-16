@@ -8,9 +8,7 @@ enum {
     MODE_SELECTION,
     MODE_NEWS_LIST,
     MODE_FILE_LIST,
-    MODE_KEYBOARD_LEGACY,
-    MODE_KEYBOARD_TOUCH,
-    MODE_NONE
+    MODE_NORMAL
 };
 
 void printInfo(u8 mode, bool clear = false);

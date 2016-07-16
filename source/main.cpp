@@ -1,4 +1,3 @@
-#include <dirent.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <3ds.h>
@@ -10,12 +9,33 @@
 PrintConsole top;
 PrintConsole bot;
 
+void audioPlay(const char* fname, int chn, u32 flags, u32 sampleRate) {
+	FILE* file = fopen(fname, "rb");
+	fseek(file, 0, SEEK_END);
+	off_t size = ftell(file);
+	fseek(file, 0, SEEK_SET);
+	u8* buffer = (u8*)linearAlloc(size);
+	fread(buffer, 1, size, file);
+	fclose(file);
+	csndPlaySound(chn, flags, sampleRate, 1, 0, buffer, buffer, size);
+	linearFree(buffer);
+}
+
+void audioStop(int chn) {
+	csndExecCmds(true);
+	CSND_SetPlayState(chn, 0);
+    csndExecCmds(true);
+	CSND_SetPlayState(chn, 0);
+}
+
 int main(int argc, char** argv)
 {
     newsInit();
     fsInit();
     amInit();
     cfguInit();
+    romfsInit();
+    csndInit();
     gfxInitDefault();
     consoleInit(GFX_TOP, &top);
     consoleInit(GFX_BOTTOM, &bot);
@@ -32,6 +52,9 @@ int main(int argc, char** argv)
     u8* image = (u8*)malloc(0xC800);
     u32 imgSize = 0;
     u64 processID = 0;
+
+    // play music
+    audioPlay("romfs:/audio/bgm.pcm", 31, SOUND_FORMAT_16BIT | SOUND_REPEAT, 32000); // using channel 31 to prevent swkbd to stop the music
 
     while (aptMainLoop())
     {
@@ -53,11 +76,14 @@ int main(int argc, char** argv)
     }
 
     free(image);
+    audioStop(31);
     consoleSelect(&top);
     consoleClear();
     consoleSelect(&bot);
     consoleClear();
     gfxExit();
+    csndExit();
+    romfsExit();
     cfguExit();
     amExit();
     fsExit();

@@ -44,7 +44,7 @@ void dumpNews (u32 id) {
     // getting message
     u16 tmp[0x1780];
     NEWS_GetNotificationMessage(id, tmp, NULL);
-    char message[0x1780 * 2];
+    char message[0x1780];
     utf2ascii(message, tmp);
 
     // writing message to file

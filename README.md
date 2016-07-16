@@ -27,4 +27,4 @@ Credits:
 - Kerouz, for the app's banner and icon.
 - Smealum and many others, for ctrulib.
 - Steveice10, for buildtools.
-- xerpi, for sf2dlib and sfillib.
+- xerpi, for sf2dlib, sfillib and sftdlib.

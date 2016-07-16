@@ -38,7 +38,7 @@ endif
 
 ifeq ($(TARGET),3DS)
     LIBRARY_DIRS += $(DEVKITPRO)/libctru $(DEVKITPRO)/portlibs/armv6k
-    LIBRARIES += sfil freetype z png jpeg sf2d ctru m
+    LIBRARIES += sfil freetype z png jpeg sf2d sftd ctru m
 
     PRODUCT_CODE := CTR-HB-NEWS
     UNIQUE_ID := 0xED990
@@ -48,7 +48,7 @@ ifeq ($(TARGET),3DS)
 
     ICON_FLAGS :=
 
-    ROMFS_DIR :=
+    ROMFS_DIR := romfs
     BANNER_AUDIO := meta/audio.cwav
     BANNER_IMAGE := meta/banner.png
     ICON := meta/icon.png
