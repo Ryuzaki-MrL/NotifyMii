@@ -20,39 +20,33 @@ SOURCE_DIRS := source
 
 EXTRA_OUTPUT_FILES :=
 
-LIBRARY_DIRS :=
-LIBRARIES :=
+LIBRARY_DIRS += $(DEVKITPRO)/libctru $(DEVKITPRO)/portlibs/armv6k
+LIBRARIES += sfil freetype z png jpeg sf2d sftd citro3d ctru m
 
 BUILD_FLAGS :=
 RUN_FLAGS :=
 
-# 3DS/Wii U CONFIGURATION #
-
-ifeq ($(TARGET),$(filter $(TARGET),3DS WIIU))
-    TITLE := $(NAME)
-    DESCRIPTION := $(NAME)
-    AUTHOR := Ryuzaki_MrL
-endif
+VERSION_MAJOR := 1
+VERSION_MINOR := 2
+VERSION_MICRO := 0
 
 # 3DS CONFIGURATION #
 
-ifeq ($(TARGET),3DS)
-    LIBRARY_DIRS += $(DEVKITPRO)/libctru $(DEVKITPRO)/portlibs/armv6k
-    LIBRARIES += sfil freetype z png jpeg sf2d sftd ctru m
+TITLE := $(NAME)
+DESCRIPTION := Homebrew Notification Manager
+AUTHOR := Ryuzaki_MrL
+PRODUCT_CODE := CTR-HB-NEWS
+UNIQUE_ID := 0xED990
 
-    PRODUCT_CODE := CTR-HB-NEWS
-    UNIQUE_ID := 0xED990
+SYSTEM_MODE := 64MB
+SYSTEM_MODE_EXT := Legacy
 
-    SYSTEM_MODE := 64MB
-    SYSTEM_MODE_EXT := Legacy
+ICON_FLAGS :=
 
-    ICON_FLAGS :=
-
-    ROMFS_DIR := romfs
-    BANNER_AUDIO := meta/audio.cwav
-    BANNER_IMAGE := meta/banner.png
-    ICON := meta/icon.png
-endif
+ROMFS_DIR := romfs
+BANNER_AUDIO := meta/audio.cwav
+BANNER_IMAGE := meta/banner.png
+ICON := meta/icon.png
 
 # INTERNAL #
 
