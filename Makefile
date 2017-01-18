@@ -26,8 +26,8 @@ LIBRARIES += sfil freetype z png jpeg sf2d sftd citro3d ctru m
 BUILD_FLAGS :=
 RUN_FLAGS :=
 
-VERSION_MAJOR := 1
-VERSION_MINOR := 2
+VERSION_MAJOR := 2
+VERSION_MINOR := 0
 VERSION_MICRO := 0
 
 # 3DS CONFIGURATION #
@@ -47,6 +47,7 @@ ROMFS_DIR := romfs
 BANNER_AUDIO := meta/audio.cwav
 BANNER_IMAGE := meta/banner.png
 ICON := meta/icon.png
+LOGO := meta/logo.bcma.lz
 
 # INTERNAL #
 
